@@ -16,6 +16,7 @@ redes: un post cuadrado tipo Instagram con el mapa y los marcadores, un "billete
 avion" con el destino y las fechas, y una guia estilo mapa de metro con una linea que
 une los lugares visitados en orden.
 
+
 ## Stack
 
 - HTML / CSS / JavaScript (Vite, sin framework)
