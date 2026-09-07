@@ -2,7 +2,9 @@ import { getTripData, saveTripData, ensurePlaceFolder } from '../drive.js';
 import { searchPlace, reverseGeocode } from '../geocode.js';
 import { createMap, addPlaceMarker, updateMarkerAppearance, flyTo } from '../map.js';
 import { openGallery } from '../gallery.js';
+import { openTripGallery } from '../tripGallery.js';
 import { openSummaryModal } from '../summary/modal.js';
+import { openNamePrompt } from '../promptModal.js';
 import { showToast } from '../toast.js';
 import { renderTopbar } from './topbar.js';
 import { colorHex, colorForIndex } from '../colors.js';
@@ -22,7 +24,10 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
           <div class="trip-sidebar-header">
             <h2 data-role="trip-title">Cargando...</h2>
             <p data-role="trip-subtitle"></p>
-            <button class="btn btn-secondary summary-btn" data-action="summary">Generar resumen</button>
+            <div class="sidebar-actions">
+              <button class="btn btn-secondary" data-action="gallery">Ver galeria</button>
+              <button class="btn btn-secondary" data-action="summary">Generar resumen</button>
+            </div>
           </div>
           <div class="place-search">
             <input type="text" placeholder="Buscar y anadir un lugar" data-role="place-input" autocomplete="off" />
@@ -70,6 +75,10 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
 
   root.querySelector('[data-action="summary"]').addEventListener('click', () => {
     openSummaryModal({ tripData, profile, token, tripFolderId });
+  });
+
+  root.querySelector('[data-action="gallery"]').addEventListener('click', () => {
+    openTripGallery(token, tripData);
   });
 
   function updateSubtitle() {
@@ -179,7 +188,12 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
     } catch (err) {
       // ignore, se pedira el nombre igualmente
     }
-    const name = window.prompt('Nombre de este lugar:', suggested);
+    const name = await openNamePrompt({
+      title: 'Nombre de este lugar',
+      description: 'Se anadira como un lugar nuevo en tu viaje.',
+      initialValue: suggested,
+      confirmLabel: 'Anadir lugar',
+    });
     if (name) createPlace(name, lat, lng);
   });
 

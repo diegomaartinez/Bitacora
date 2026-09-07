@@ -188,6 +188,32 @@ export async function listPhotos(token, placeFolderId) {
   return data.files || [];
 }
 
+/**
+ * Lista todas las fotos de un viaje, de todos sus lugares, en un solo
+ * array plano (cada foto lleva ademas el nombre y la fecha del lugar al
+ * que pertenece). Se usa para la galeria general del viaje.
+ */
+export async function listTripPhotos(token, places) {
+  const perPlace = await Promise.all(
+    places.map(async (place) => {
+      try {
+        const photos = await listPhotos(token, place.id);
+        return photos.map((photo) => ({
+          ...photo,
+          placeId: place.id,
+          placeName: place.name,
+          placeDate: place.date || null,
+        }));
+      } catch (err) {
+        return [];
+      }
+    })
+  );
+  return perPlace
+    .flat()
+    .sort((a, b) => (a.placeDate || '').localeCompare(b.placeDate || '') || a.createdTime.localeCompare(b.createdTime));
+}
+
 /** Descarga el contenido de una foto y devuelve una object URL (con cache en memoria). */
 export async function getPhotoBlobUrl(token, fileId) {
   if (blobUrlCache.has(fileId)) return blobUrlCache.get(fileId);

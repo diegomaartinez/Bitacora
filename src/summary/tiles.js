@@ -1,18 +1,24 @@
 // ---------------------------------------------------------------------------
-// Carga y dibuja tiles de mapa reales (estilo "Positron" de CARTO, sin
-// etiquetas) para usarlos como fondo en las imagenes de resumen. Se usa
-// CARTO en vez de OpenStreetMap directamente porque sus tiles se sirven con
-// cabeceras CORS abiertas, imprescindible para poder leer el canvas despues
-// (exportarlo como PNG) sin que el navegador lo bloquee por "tainted canvas".
+// Carga y dibuja tiles de mapa reales (estilo mapa claro, sin etiquetas)
+// para usarlos como fondo en las imagenes de resumen.
+//
+// Se usa el basemap gratuito "Light Gray Canvas" de Esri en vez de
+// OpenStreetMap directamente porque sus tiles se sirven con cabeceras CORS
+// abiertas, imprescindible para poder leer el canvas despues (exportarlo
+// como PNG) sin que el navegador lo bloquee por "tainted canvas". No
+// requiere API key para este nivel de uso.
+//
+// (Nota: antes se usaba CARTO, pero desde 2025 exige una API key incluso
+// para uso minimo y sin ella devuelve tiles con una marca de agua de
+// "API key needed" en vez del mapa.)
 // ---------------------------------------------------------------------------
 
 const TILE_SIZE = 256;
-const SUBDOMAINS = ['a', 'b', 'c', 'd'];
 const imageCache = new Map();
 
 function tileUrl(x, y, z) {
-  const s = SUBDOMAINS[(x + y) % SUBDOMAINS.length];
-  return `https://${s}.basemaps.cartocdn.com/light_nolabels/${z}/${x}/${y}@2x.png`;
+  // Esri usa el orden z/y/x (fila/columna) en vez del z/x/y habitual.
+  return `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/${z}/${y}/${x}`;
 }
 
 function loadImage(url) {

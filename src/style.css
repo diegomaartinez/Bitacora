@@ -29,11 +29,20 @@
   box-sizing: border-box;
 }
 
+/* Sin este refuerzo, algunos elementos con el atributo "hidden" (como los
+   botones .btn) siguen mostrandose: su propia clase fija "display" con la
+   misma especificidad que la regla nativa [hidden], y al ir despues en la
+   hoja de estilos, gana ella. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -42,12 +51,19 @@ body {
   font-family: var(--font-sans);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
 }
 
+/* La app entera queda encuadrada en la pantalla, como una app nativa: sin
+   scroll de pagina ni barra de navegacion vertical. Cada pantalla gestiona
+   su propio scroll interno donde hace falta (la lista de lugares, el
+   listado de viajes, etc). */
 #app {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 h1,
@@ -79,17 +95,21 @@ a {
 
 .screen {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 32px;
+  padding: 16px 32px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  flex-shrink: 0;
+  gap: 12px;
 }
 
 .brand {
@@ -166,6 +186,12 @@ a {
 
 .btn-secondary:hover {
   background: var(--surface-muted);
+}
+
+.btn-secondary.active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
 }
 
 .btn-text {
@@ -280,7 +306,10 @@ a {
 
 .dashboard {
   flex: 1;
-  padding: 48px 32px 80px;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 32px 32px 80px;
   max-width: 1080px;
   margin: 0 auto;
   width: 100%;
@@ -427,8 +456,10 @@ a {
 
 .trip-screen {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .trip-body {
@@ -459,6 +490,18 @@ a {
 .trip-sidebar-header p {
   font-size: 12px;
   color: var(--muted);
+}
+
+.sidebar-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.sidebar-actions .btn {
+  flex: 1;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .place-search {
@@ -624,24 +667,139 @@ a {
   overflow-y: auto;
 }
 
-.upload-zone {
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-md);
-  padding: 28px;
-  text-align: center;
-  margin-bottom: 24px;
-  cursor: pointer;
-  background: var(--surface-muted);
+.btn-small {
+  padding: 7px 14px;
+  font-size: 12px;
 }
 
-.upload-zone p {
+/* ------------------------------ Notas / detalles --------------------------- */
+
+.place-notes-section {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.section-hint {
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.notes-add-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.notes-input {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.notes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
   font-size: 13px;
+}
+
+.note-remove {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+.note-remove:hover {
+  color: var(--accent-red-text);
+}
+
+.notes-empty {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
+/* -------------------------------- Fotos ------------------------------------ */
+
+.photo-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.add-photo-btn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ink);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 120ms ease, background 150ms ease;
+}
+
+.add-photo-btn:hover {
+  background: #333333;
+}
+
+.add-photo-btn:active {
+  transform: scale(0.95);
+}
+
+.gallery-section {
+  padding-top: 4px;
+}
+
+.gallery-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.gallery-section-header [data-role='photo-count'] {
+  font-size: 12px;
   color: var(--muted);
 }
 
-.upload-zone.dragover {
-  border-color: var(--ink);
-  background: var(--surface);
+.gallery-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .photo-grid {
@@ -666,22 +824,37 @@ a {
   display: block;
 }
 
-.photo-item .photo-remove {
+.photo-grid.edit-mode .photo-item {
+  cursor: pointer;
+}
+
+.photo-grid.edit-mode .photo-item::after {
+  content: '';
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 8px;
+  right: 8px;
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: none;
-  background: rgba(23, 24, 26, 0.55);
+  border: 2px solid #fff;
+  background: rgba(23, 24, 26, 0.35);
+  box-shadow: 0 0 0 1px rgba(23, 24, 26, 0.25);
+}
+
+.photo-grid.edit-mode .photo-item.selected::after {
+  content: '✓';
+  background: var(--ink);
   color: #fff;
   font-size: 13px;
-  line-height: 1;
-  cursor: pointer;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.photo-grid.edit-mode .photo-item.selected {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
 }
 
 .photo-item .photo-skeleton {
@@ -763,11 +936,6 @@ a {
   box-shadow: 0 0 0 2px var(--surface);
 }
 
-.summary-btn {
-  width: 100%;
-  margin-top: 16px;
-}
-
 .gallery-empty {
   padding: 24px;
   text-align: center;
@@ -844,6 +1012,182 @@ a {
   min-width: 220px;
 }
 
+/* ------------------------------ Prompt modal ------------------------------ */
+
+.prompt-panel {
+  max-width: 420px;
+}
+
+.prompt-panel .modal-header {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.prompt-input {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  background: var(--surface-muted);
+  margin-bottom: 20px;
+}
+
+.prompt-input:focus {
+  outline: none;
+  border-color: var(--ink);
+  background: var(--surface);
+}
+
+.prompt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ------------------------------ Trip gallery ------------------------------ */
+
+.gallery-panel {
+  max-width: 960px;
+}
+
+.gallery-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.view-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.view-toggle-btn {
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.view-toggle-btn.active {
+  background: var(--ink);
+  color: #fff;
+}
+
+.gallery-body {
+  min-height: 320px;
+}
+
+.trip-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 4px;
+}
+
+.trip-photo-item {
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  border: none;
+  padding: 0;
+  aspect-ratio: 1;
+  background: var(--surface-muted);
+  cursor: pointer;
+}
+
+.trip-photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-carousel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 8px 24px;
+}
+
+.carousel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+.carousel-frame {
+  flex: 1;
+  min-height: 0;
+  height: min(60vh, 520px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-muted);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.carousel-frame img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.carousel-nav {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-nav:hover {
+  background: var(--surface-muted);
+}
+
+.carousel-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 12px;
+}
+
+.carousel-caption strong {
+  font-size: 14px;
+  display: block;
+}
+
+.carousel-caption span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.carousel-caption div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.carousel-counter {
+  flex-shrink: 0;
+}
+
 /* --------------------------------- Misc ---------------------------------- */
 
 .loading-overlay {
@@ -890,6 +1234,58 @@ a {
   .trip-sidebar {
     border-right: none;
     border-bottom: 1px solid var(--border);
-    max-height: 280px;
+    max-height: 240px;
+  }
+
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-panel {
+    max-width: 100%;
+    width: 100%;
+    max-height: 92vh;
+    max-height: 92dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .topbar {
+    padding: 12px 16px;
+  }
+
+  .user-chip span {
+    display: none;
+  }
+
+  .trip-sidebar-header,
+  .place-search {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .modal-header,
+  .modal-body {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .gallery-header-actions {
+    gap: 8px;
+  }
+
+  .view-toggle-btn {
+    padding: 6px 10px;
+  }
+
+  .trip-photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  }
+
+  .carousel-nav {
+    width: 34px;
+    height: 34px;
   }
 }

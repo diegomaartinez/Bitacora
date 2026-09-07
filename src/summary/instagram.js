@@ -231,7 +231,7 @@ async function drawMapContent(ctx, places, area) {
     ctx.font = '500 13px Inter';
     ctx.fillStyle = 'rgba(23,24,26,0.55)';
     ctx.textAlign = 'right';
-    ctx.fillText('© OpenStreetMap, © CARTO', area.x + area.width - 12, area.y + area.height - 10);
+    ctx.fillText('© Esri, © OpenStreetMap', area.x + area.width - 12, area.y + area.height - 10);
   }
 }
 
