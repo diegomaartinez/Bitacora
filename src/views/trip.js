@@ -119,12 +119,16 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
     }
     listEl.innerHTML = tripData.places
       .map(
-        (p) => `
+        (p, i) => `
           <li class="place-item" data-place-id="${p.id}">
             <span class="marker-dot" style="background:${colorHex(p.color)}"></span>
             <div class="place-info">
               <h4>${escapeHtml(p.name)}</h4>
               <span>${formatDate(p.date)}</span>
+            </div>
+            <div class="place-reorder">
+              <button type="button" class="reorder-btn" data-action="move-up" ${i === 0 ? 'disabled' : ''} title="${t('trip.moveUp')}" aria-label="${t('trip.moveUp')}">${chevronUpIcon()}</button>
+              <button type="button" class="reorder-btn" data-action="move-down" ${i === tripData.places.length - 1 ? 'disabled' : ''} title="${t('trip.moveDown')}" aria-label="${t('trip.moveDown')}">${chevronDownIcon()}</button>
             </div>
           </li>
         `
@@ -138,7 +142,29 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
           openPlaceGallery(place);
         }
       });
+      el.querySelector('[data-action="move-up"]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        movePlace(el.dataset.placeId, -1);
+      });
+      el.querySelector('[data-action="move-down"]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        movePlace(el.dataset.placeId, 1);
+      });
     });
+  }
+
+  async function movePlace(placeId, direction) {
+    const index = tripData.places.findIndex((p) => p.id === placeId);
+    const targetIndex = index + direction;
+    if (index === -1 || targetIndex < 0 || targetIndex >= tripData.places.length) return;
+    const [place] = tripData.places.splice(index, 1);
+    tripData.places.splice(targetIndex, 0, place);
+    renderPlaceList();
+    try {
+      await saveTripData(token, tripFolderId, tripData);
+    } catch (err) {
+      showToast(t('trip.saveChangeError'), { error: true });
+    }
   }
 
   function openPlaceGallery(place) {
@@ -259,6 +285,14 @@ function renderPlaceSuggestions(el, results, onSelect) {
 
 function shortLabel(label) {
   return label.split(',').slice(0, 2).join(',').trim();
+}
+
+function chevronUpIcon() {
+  return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>`;
+}
+
+function chevronDownIcon() {
+  return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 }
 
 function escapeHtml(str) {

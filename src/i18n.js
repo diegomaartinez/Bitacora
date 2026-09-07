@@ -70,6 +70,8 @@ export const STRINGS = {
     'trip.namePromptTitle': 'Nombre de este lugar',
     'trip.namePromptDescription': 'Se añadirá como un lugar nuevo en tu viaje.',
     'trip.namePromptConfirm': 'Añadir lugar',
+    'trip.moveUp': 'Subir',
+    'trip.moveDown': 'Bajar',
 
     // --- Trip settings modal ---
     'tripSettings.title': 'Ajustes del viaje',
@@ -248,6 +250,8 @@ export const STRINGS = {
     'trip.namePromptTitle': 'Name this place',
     'trip.namePromptDescription': 'It will be added as a new place in your trip.',
     'trip.namePromptConfirm': 'Add place',
+    'trip.moveUp': 'Move up',
+    'trip.moveDown': 'Move down',
 
     // --- Trip settings modal ---
     'tripSettings.title': 'Trip settings',

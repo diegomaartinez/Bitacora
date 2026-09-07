@@ -693,6 +693,36 @@ a {
   color: var(--muted);
 }
 
+.place-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.reorder-btn {
+  width: 20px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.reorder-btn:hover:not(:disabled) {
+  background: var(--border);
+  color: var(--ink);
+}
+
+.reorder-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
 .place-list-empty {
   padding: 24px;
   font-size: 13px;
