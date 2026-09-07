@@ -5,6 +5,7 @@ import { openGallery } from '../gallery.js';
 import { openTripGallery } from '../tripGallery.js';
 import { openSummaryModal } from '../summary/modal.js';
 import { openNamePrompt } from '../promptModal.js';
+import { openTripSettings } from '../tripSettings.js';
 import { showToast } from '../toast.js';
 import { renderTopbar } from './topbar.js';
 import { colorHex, colorForIndex } from '../colors.js';
@@ -64,12 +65,27 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
     if (!Array.isArray(p.notes)) p.notes = [];
   });
 
-  renderTopbar(root.querySelector('[data-role="topbar"]'), {
-    profile,
-    title: tripData.name,
-    onBack,
-    onSignOut: () => window.dispatchEvent(new CustomEvent('td:signout')),
-  });
+  function renderTripTopbar() {
+    renderTopbar(root.querySelector('[data-role="topbar"]'), {
+      profile,
+      title: tripData.name,
+      onBack,
+      onSignOut: () => window.dispatchEvent(new CustomEvent('td:signout')),
+      onSettings: () =>
+        openTripSettings({
+          token,
+          tripData,
+          tripFolderId,
+          onRenamed: (name) => {
+            root.querySelector('[data-role="trip-title"]').textContent = name;
+            renderTripTopbar();
+          },
+          onDeleted: onBack,
+        }),
+    });
+  }
+
+  renderTripTopbar();
 
   root.querySelector('[data-role="trip-title"]').textContent = tripData.name;
 

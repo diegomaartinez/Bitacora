@@ -24,23 +24,33 @@ export const STRINGS = {
     'login.signInGenericError': 'No se pudo iniciar sesión con Google.',
     'login.configWarning':
       'Falta configurar las credenciales de Google. Abre <code>src/config.js</code> y pega tu Client ID de OAuth (mira README.md para los pasos completos en Google Cloud Console).',
+    'login.notReadyGeneric': 'El inicio de sesión no está disponible ahora mismo. Vuelve a intentarlo más tarde.',
 
     // --- Topbar ---
     'topbar.backToTrips': 'Viajes',
     'topbar.signOut': 'Salir',
+    'topbar.settings': 'Ajustes del viaje',
 
     // --- Dashboard ---
     'dashboard.title': 'Tus viajes',
     'dashboard.subtitle': 'Cada viaje guarda sus lugares y fotos en una carpeta propia dentro de tu Google Drive.',
-    'dashboard.newTripTitle': 'Empezar un viaje nuevo',
+    'dashboard.newTripButton': 'Nuevo viaje',
+    'dashboard.newTripModalTitle': 'Empezar un viaje nuevo',
     'dashboard.newTripHint': 'Escribe un país, región o ciudad (no usamos tu ubicación real). Por ejemplo: "Islas Canarias".',
-    'dashboard.newTripPlaceholder': '¿A dónde fuiste?',
+    'dashboard.newTripPlaceholder': '¿A dónde vamos? ✈️',
     'dashboard.loadingTrips': 'Cargando tus viajes...',
     'dashboard.loadTripsError': 'No se pudieron cargar los viajes: {{message}}',
     'dashboard.createTripError': 'No se pudo crear el viaje.',
     'dashboard.noTrips': 'Todavía no tienes ningún viaje. Crea el primero arriba.',
-    'dashboard.tripTag': 'Viaje',
-    'dashboard.createdOn': 'Creado el {{date}}',
+    'dashboard.datesTBD': 'Fechas por definir',
+    'dashboard.placesOne': '1 lugar',
+    'dashboard.placesOther': '{{count}} lugares',
+    'dashboard.noPlaces': 'Sin lugares todavía',
+    'dashboard.deleteTripAction': 'Eliminar viaje',
+    'dashboard.deleteTripConfirm': '¿Eliminar "{{name}}"?',
+    'dashboard.deleteTripYes': 'Sí, eliminar',
+    'dashboard.deleteTripCancel': 'Cancelar',
+    'dashboard.deleteTripError': 'No se pudo eliminar el viaje.',
 
     // --- Trip screen ---
     'trip.loading': 'Cargando...',
@@ -60,6 +70,30 @@ export const STRINGS = {
     'trip.namePromptTitle': 'Nombre de este lugar',
     'trip.namePromptDescription': 'Se añadirá como un lugar nuevo en tu viaje.',
     'trip.namePromptConfirm': 'Añadir lugar',
+
+    // --- Trip settings modal ---
+    'tripSettings.title': 'Ajustes del viaje',
+    'tripSettings.close': 'Cerrar',
+    'tripSettings.renameLabel': 'Nombre del viaje',
+    'tripSettings.renameSave': 'Guardar',
+    'tripSettings.renameSuccess': 'Nombre actualizado.',
+    'tripSettings.renameError': 'No se pudo cambiar el nombre.',
+    'tripSettings.shareTitle': 'Compartir por enlace',
+    'tripSettings.shareHint':
+      'Genera un enlace de solo lectura a las fotos de este viaje. Quien lo reciba podrá verlas, pero no editar ni añadir nada.',
+    'tripSettings.shareGenerate': 'Generar y copiar enlace',
+    'tripSettings.shareCopied': 'Enlace copiado al portapapeles.',
+    'tripSettings.shareError': 'No se pudo generar el enlace.',
+    'tripSettings.shareRevoke': 'Dejar de compartir',
+    'tripSettings.shareRevoked': 'Enlace desactivado.',
+    'tripSettings.shareRevokeError': 'No se pudo desactivar el enlace.',
+    'tripSettings.dangerTitle': 'Zona de peligro',
+    'tripSettings.dangerHint': 'Esta acción mueve el viaje (y sus fotos) a la papelera de tu Google Drive.',
+    'tripSettings.deleteAction': 'Eliminar viaje',
+    'tripSettings.deleteConfirm': '¿Seguro que quieres eliminarlo?',
+    'tripSettings.deleteYes': 'Sí, eliminar',
+    'tripSettings.deleteCancel': 'Cancelar',
+    'tripSettings.deleteError': 'No se pudo eliminar el viaje.',
 
     // --- Toast (default / fallback) ---
     'toast.error': 'Ha ocurrido un error.',
@@ -168,23 +202,33 @@ export const STRINGS = {
     'login.signInGenericError': 'Could not sign in with Google.',
     'login.configWarning':
       'Google credentials are not configured yet. Open <code>src/config.js</code> and paste your OAuth Client ID (see README.md for the full steps in Google Cloud Console).',
+    'login.notReadyGeneric': "Sign-in isn't available right now. Please try again later.",
 
     // --- Topbar ---
     'topbar.backToTrips': 'Trips',
     'topbar.signOut': 'Sign out',
+    'topbar.settings': 'Trip settings',
 
     // --- Dashboard ---
     'dashboard.title': 'Your trips',
     'dashboard.subtitle': 'Each trip keeps its places and photos in its own folder inside your Google Drive.',
-    'dashboard.newTripTitle': 'Start a new trip',
+    'dashboard.newTripButton': 'New trip',
+    'dashboard.newTripModalTitle': 'Start a new trip',
     'dashboard.newTripHint': 'Type a country, region or city (we never use your real location). For example: "Canary Islands".',
-    'dashboard.newTripPlaceholder': 'Where did you go?',
+    'dashboard.newTripPlaceholder': 'Where are we going? ✈️',
     'dashboard.loadingTrips': 'Loading your trips...',
     'dashboard.loadTripsError': 'Could not load your trips: {{message}}',
     'dashboard.createTripError': 'Could not create the trip.',
     'dashboard.noTrips': 'You have no trips yet. Create your first one above.',
-    'dashboard.tripTag': 'Trip',
-    'dashboard.createdOn': 'Created on {{date}}',
+    'dashboard.datesTBD': 'Dates to be defined',
+    'dashboard.placesOne': '1 place',
+    'dashboard.placesOther': '{{count}} places',
+    'dashboard.noPlaces': 'No places yet',
+    'dashboard.deleteTripAction': 'Delete trip',
+    'dashboard.deleteTripConfirm': 'Delete "{{name}}"?',
+    'dashboard.deleteTripYes': 'Yes, delete',
+    'dashboard.deleteTripCancel': 'Cancel',
+    'dashboard.deleteTripError': 'Could not delete the trip.',
 
     // --- Trip screen ---
     'trip.loading': 'Loading...',
@@ -204,6 +248,30 @@ export const STRINGS = {
     'trip.namePromptTitle': 'Name this place',
     'trip.namePromptDescription': 'It will be added as a new place in your trip.',
     'trip.namePromptConfirm': 'Add place',
+
+    // --- Trip settings modal ---
+    'tripSettings.title': 'Trip settings',
+    'tripSettings.close': 'Close',
+    'tripSettings.renameLabel': 'Trip name',
+    'tripSettings.renameSave': 'Save',
+    'tripSettings.renameSuccess': 'Name updated.',
+    'tripSettings.renameError': 'Could not change the name.',
+    'tripSettings.shareTitle': 'Share by link',
+    'tripSettings.shareHint':
+      "Generate a read-only link to this trip's photos. Whoever gets it can view them, but not edit or add anything.",
+    'tripSettings.shareGenerate': 'Generate and copy link',
+    'tripSettings.shareCopied': 'Link copied to clipboard.',
+    'tripSettings.shareError': 'Could not generate the link.',
+    'tripSettings.shareRevoke': 'Stop sharing',
+    'tripSettings.shareRevoked': 'Link disabled.',
+    'tripSettings.shareRevokeError': 'Could not disable the link.',
+    'tripSettings.dangerTitle': 'Danger zone',
+    'tripSettings.dangerHint': 'This moves the trip (and its photos) to your Google Drive trash.',
+    'tripSettings.deleteAction': 'Delete trip',
+    'tripSettings.deleteConfirm': 'Are you sure you want to delete it?',
+    'tripSettings.deleteYes': 'Yes, delete',
+    'tripSettings.deleteCancel': 'Cancel',
+    'tripSettings.deleteError': 'Could not delete the trip.',
 
     // --- Toast (default / fallback) ---
     'toast.error': 'Something went wrong.',

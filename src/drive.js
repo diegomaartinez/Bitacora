@@ -139,6 +139,31 @@ export async function saveTripData(token, tripFolderId, data) {
   });
 }
 
+/** Cambia el nombre de la carpeta del viaje y mantiene sincronizado trip.json. */
+export async function renameTrip(token, tripFolderId, newName) {
+  const cleanName = (newName || '').trim();
+  if (!cleanName) return;
+  await driveFetch(token, `${API}/files/${tripFolderId}?fields=id`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: cleanName }),
+  });
+  const data = await getTripData(token, tripFolderId);
+  if (data) {
+    data.name = cleanName;
+    await saveTripData(token, tripFolderId, data);
+  }
+}
+
+/** Mueve la carpeta de un viaje (y todo su contenido: lugares y fotos) a la papelera de Drive. */
+export async function deleteTrip(token, tripFolderId) {
+  await driveFetch(token, `${API}/files/${tripFolderId}?fields=id`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ trashed: true }),
+  });
+}
+
 /** Crea (si hace falta) la subcarpeta de fotos de un lugar dentro del viaje. */
 export async function ensurePlaceFolder(token, tripFolderId, placeName) {
   return createFolder(token, placeName, tripFolderId);

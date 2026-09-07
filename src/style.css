@@ -18,6 +18,8 @@
   --accent-green-text: #346538;
   --accent-yellow: #fbf3db;
   --accent-yellow-text: #956400;
+  --accent-cta: #e0956a;
+  --accent-cta-hover: #c97f56;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -209,6 +211,35 @@ a {
   color: var(--accent-red-text);
 }
 
+.btn-cta {
+  background: var(--accent-cta);
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.btn-cta:hover {
+  background: var(--accent-cta-hover);
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.icon-btn:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
 /* --------------------------- Language switcher --------------------------- */
 
 .lang-switch {
@@ -356,6 +387,11 @@ a {
 }
 
 .dashboard-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
   margin-bottom: 36px;
 }
 
@@ -368,22 +404,8 @@ a {
   font-size: 14px;
 }
 
-.new-trip-panel {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  padding: 32px;
-  margin-bottom: 40px;
-}
-
-.new-trip-panel h2 {
-  font-size: 18px;
-  margin-bottom: 4px;
-}
-
-.new-trip-panel p.hint {
-  font-size: 13px;
-  margin-bottom: 18px;
+.new-trip-panel-modal .modal-body {
+  padding-top: 20px;
 }
 
 .search-row {
@@ -438,10 +460,11 @@ a {
 }
 
 .trip-card {
+  position: relative;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
-  padding: 24px;
+  overflow: hidden;
   cursor: pointer;
   transition: box-shadow 200ms ease, transform 200ms ease;
   opacity: 0;
@@ -451,29 +474,76 @@ a {
 }
 
 .trip-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
-.trip-card .tag {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  background: var(--accent-blue);
-  color: var(--accent-blue-text);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 14px;
+.trip-card-cover {
+  height: 120px;
+  background: var(--surface-muted);
+  pointer-events: none;
 }
 
-.trip-card h3 {
-  font-size: 19px;
+.trip-card-cover .leaflet-control-attribution {
+  display: none;
+}
+
+.trip-card-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(23, 24, 26, 0.55);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease, background 150ms ease;
+}
+
+.trip-card:hover .trip-card-delete,
+.trip-card.confirming .trip-card-delete {
+  opacity: 1;
+}
+
+.trip-card-delete:hover {
+  background: var(--accent-red-text);
+}
+
+.trip-card-body {
+  padding: 18px 20px 20px;
+}
+
+.trip-card-body h3 {
+  font-size: 18px;
   margin-bottom: 6px;
 }
 
-.trip-card p {
+.trip-card-dates {
   font-size: 12px;
   color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.trip-card-places {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.trip-card-confirm {
+  padding: 16px 20px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.trip-card-confirm p {
+  font-size: 13px;
+  margin-bottom: 10px;
+  color: var(--ink);
 }
 
 .empty-state {
@@ -710,6 +780,53 @@ a {
 .btn-small {
   padding: 7px 14px;
   font-size: 12px;
+}
+
+/* ---------------------------- Ajustes del viaje ---------------------------- */
+
+.settings-panel {
+  max-width: 480px;
+}
+
+.settings-section {
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.settings-inline-row {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-inline-row input {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.settings-inline-row input:focus {
+  outline: none;
+  border-color: var(--ink);
+  background: var(--surface);
+}
+
+.settings-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-danger .section-label {
+  color: var(--accent-red-text);
 }
 
 /* ------------------------------ Notas / detalles --------------------------- */
