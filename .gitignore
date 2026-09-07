@@ -3,3 +3,15 @@ dist
 .DS_Store
 *.local
 src/config.local.js
+
+# Entornos y editores
+.venv/
+.idea/
+.vscode/
+
+# Nunca subir credenciales de Google descargadas desde Cloud Console.
+# Esta app solo necesita el Client ID (que va en src/config.js), nunca un
+# client secret ni un archivo de credenciales completo.
+client_secret*.json
+credentials*.json
+*.env
