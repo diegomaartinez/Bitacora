@@ -8,6 +8,7 @@ src/config.local.js
 .venv/
 .idea/
 .vscode/
+Claude outputs/
 
 # Nunca subir credenciales de Google descargadas desde Cloud Console.
 # Esta app solo necesita el Client ID (que va en src/config.js), nunca un

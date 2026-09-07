@@ -86,3 +86,28 @@ export function tripDateRange(places) {
   if (!dates.length) return { start: null, end: null };
   return { start: dates[0], end: dates[dates.length - 1] };
 }
+
+/** Firma pequena y consistente al pie de las tres imagenes de resumen. */
+export function drawFooterMark(ctx, centerX, y, { color = '#83807a' } = {}) {
+  const prevAlign = ctx.textAlign;
+  const fontA = '500 20px Inter';
+  const fontB = 'italic 500 22px Newsreader';
+  const textA = 'Hecho con ·';
+  const textB = 'Bitácora';
+  ctx.font = fontA;
+  const widthA = ctx.measureText(textA).width;
+  ctx.font = fontB;
+  const widthB = ctx.measureText(textB).width;
+  const gap = 8;
+  const total = widthA + gap + widthB;
+  let x = centerX - total / 2;
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = color;
+  ctx.font = fontA;
+  ctx.fillText(textA, x, y);
+  x += widthA + gap;
+  ctx.font = fontB;
+  ctx.fillText(textB, x, y);
+  ctx.textAlign = prevAlign;
+}

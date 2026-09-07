@@ -206,3 +206,46 @@ export async function deletePhoto(token, fileId) {
     blobUrlCache.delete(fileId);
   }
 }
+
+/**
+ * Convierte la carpeta de un viaje en "cualquiera con el enlace puede ver"
+ * (solo lectura) y devuelve el enlace publico a esa carpeta.
+ *
+ * Importante: esto solo afecta a la carpeta de ESTE viaje (y a lo que
+ * contiene: sus lugares y fotos). No concede acceso ni al resto del Drive
+ * del usuario ni a otros viajes, y el rol "reader" impide que quien reciba
+ * el enlace pueda editar o borrar nada.
+ */
+export async function ensureTripShareLink(token, tripFolderId) {
+  const res = await driveFetch(
+    token,
+    `${API}/files/${tripFolderId}/permissions?fields=permissions(id,type,role)`
+  );
+  const data = await res.json();
+  const alreadyPublic = (data.permissions || []).some(
+    (p) => p.type === 'anyone' && p.role === 'reader'
+  );
+  if (!alreadyPublic) {
+    await driveFetch(token, `${API}/files/${tripFolderId}/permissions?sendNotificationEmail=false`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'anyone', role: 'reader', allowFileDiscovery: false }),
+    });
+  }
+  return `https://drive.google.com/drive/folders/${tripFolderId}`;
+}
+
+/** Revoca el acceso publico ("cualquiera con el enlace") a la carpeta de un viaje. */
+export async function revokeTripShareLink(token, tripFolderId) {
+  const res = await driveFetch(
+    token,
+    `${API}/files/${tripFolderId}/permissions?fields=permissions(id,type,role)`
+  );
+  const data = await res.json();
+  const publicPerms = (data.permissions || []).filter((p) => p.type === 'anyone');
+  await Promise.all(
+    publicPerms.map((p) =>
+      driveFetch(token, `${API}/files/${tripFolderId}/permissions/${p.id}`, { method: 'DELETE' })
+    )
+  );
+}

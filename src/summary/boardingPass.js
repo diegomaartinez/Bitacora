@@ -1,10 +1,11 @@
-import { roundRect, formatShortDateWithYear, tripDateRange } from './canvasUtils.js';
+import { roundRect, formatShortDateWithYear, tripDateRange, drawFooterMark } from './canvasUtils.js';
+import { getQrCanvas } from './qr.js';
 
 const WIDTH = 1500;
 const HEIGHT = 640;
 const STUB_WIDTH = 340;
 
-export function drawBoardingPass(ctx, { tripData, passengerName }) {
+export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl, shareError }) {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
   // Fondo
@@ -105,12 +106,58 @@ export function drawBoardingPass(ctx, { tripData, passengerName }) {
   ctx.textAlign = 'center';
   fitDestino(ctx, shortName(tripData.name), stubCenter, cardY + 118, cardX + cardW - stubX - 20, true);
 
-  drawBarcode(ctx, stubX + 10, cardY + cardH - 120, cardX + cardW - stubX - 20, 60);
+  const qrSize = 150;
+  const qrX = stubCenter - qrSize / 2;
+  const qrY = cardY + 190;
+  if (shareUrl) {
+    try {
+      const qrCanvas = await getQrCanvas(shareUrl, qrSize * 2);
+      ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+    } catch (err) {
+      drawQrPlaceholder(ctx, qrX, qrY, qrSize, 'Error al generar');
+    }
+  } else {
+    drawQrPlaceholder(ctx, qrX, qrY, qrSize, shareError ? 'Enlace no disponible' : 'Generando codigo…');
+  }
 
   ctx.fillStyle = '#83807a';
-  ctx.font = '500 14px Inter';
+  ctx.font = '500 13px Inter';
   ctx.textAlign = 'center';
-  ctx.fillText('BITÁCORA · DIARIO DE VIAJE', stubCenter, cardY + cardH - 40);
+  ctx.fillText('Escanea para ver las fotos', stubCenter, qrY + qrSize + 26);
+
+  drawFooterMark(ctx, stubCenter, cardY + cardH - 30);
+}
+
+function drawQrPlaceholder(ctx, x, y, size, label) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(23,24,26,0.25)';
+  ctx.setLineDash([4, 6]);
+  ctx.lineWidth = 2;
+  roundRect(ctx, x, y, size, size, 12);
+  ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = '#83807a';
+  ctx.font = '500 13px Inter';
+  ctx.textAlign = 'center';
+  wrapCentered(ctx, label, x + size / 2, y + size / 2, size - 24, 16);
+}
+
+function wrapCentered(ctx, text, cx, cy, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  const lines = [];
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  const startY = cy - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((l, i) => ctx.fillText(l, cx, startY + i * lineHeight));
 }
 
 function planeUnicode() {
@@ -155,23 +202,6 @@ function drawTracked(ctx, text, startX, y, tracking, centered = false) {
     cx += widths[i] + tracking;
   });
   ctx.textAlign = prevAlign;
-}
-
-function drawBarcode(ctx, x, y, width, height) {
-  let cx = x;
-  // Patron pseudo-aleatorio pero estable (no depende de Math.random para que
-  // no cambie entre repintados).
-  let seed = width * 7 + height * 13;
-  const rand = () => {
-    seed = (seed * 9301 + 49297) % 233280;
-    return seed / 233280;
-  };
-  ctx.fillStyle = '#17181a';
-  while (cx < x + width) {
-    const barW = 2 + rand() * 4;
-    if (rand() > 0.35) ctx.fillRect(cx, y, barW, height);
-    cx += barW + 2;
-  }
 }
 
 export { WIDTH as BOARDING_PASS_WIDTH, HEIGHT as BOARDING_PASS_HEIGHT };

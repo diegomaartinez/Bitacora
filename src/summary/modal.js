@@ -2,9 +2,10 @@ import { drawInstagramPost, INSTAGRAM_SIZE } from './instagram.js';
 import { drawBoardingPass, BOARDING_PASS_WIDTH, BOARDING_PASS_HEIGHT } from './boardingPass.js';
 import { drawMetroMap, METRO_WIDTH, METRO_HEIGHT } from './metroMap.js';
 import { ensureFontsReady, downloadCanvas } from './canvasUtils.js';
+import { ensureTripShareLink } from '../drive.js';
 
 const TABS = [
-  { key: 'instagram', label: 'Post de Instagram' },
+  { key: 'instagram', label: 'Mapa' },
   { key: 'boarding', label: 'Billete de avion' },
   { key: 'metro', label: 'Guia de metro' },
 ];
@@ -22,11 +23,15 @@ function slug(text) {
     .replace(/(^-|-$)/g, '');
 }
 
-export function openSummaryModal({ tripData, profile }) {
+export function openSummaryModal({ tripData, profile, token, tripFolderId }) {
   if (overlayEl) overlayEl.remove();
 
   let activeTab = 'instagram';
   let title = tripData.name || '';
+  let shareUrl = null;
+  let shareError = false;
+  let shareRequested = false;
+  let renderToken = 0;
 
   overlayEl = document.createElement('div');
   overlayEl.className = 'modal-overlay';
@@ -85,20 +90,37 @@ export function openSummaryModal({ tripData, profile }) {
   }
 
   async function redraw() {
+    const myToken = ++renderToken;
     await ensureFontsReady();
+    if (myToken !== renderToken) return;
     if (activeTab === 'instagram') {
       canvas.width = INSTAGRAM_SIZE;
       canvas.height = INSTAGRAM_SIZE;
-      drawInstagramPost(ctx, { tripData, title });
+      await drawInstagramPost(ctx, { tripData, title });
     } else if (activeTab === 'boarding') {
       canvas.width = BOARDING_PASS_WIDTH;
       canvas.height = BOARDING_PASS_HEIGHT;
-      drawBoardingPass(ctx, { tripData, passengerName: profile?.name });
+      await drawBoardingPass(ctx, { tripData, passengerName: profile?.name, shareUrl, shareError });
+      if (myToken === renderToken) requestShareLink();
     } else {
       canvas.width = METRO_WIDTH;
       canvas.height = METRO_HEIGHT;
       drawMetroMap(ctx, { tripData });
     }
+  }
+
+  /** Pide (una sola vez) que la carpeta del viaje sea visible por enlace, para el QR del billete. */
+  async function requestShareLink() {
+    if (shareUrl || shareRequested || !token || !tripFolderId) return;
+    shareRequested = true;
+    try {
+      shareUrl = await ensureTripShareLink(token, tripFolderId);
+      shareError = false;
+    } catch (err) {
+      shareError = true;
+      shareRequested = false;
+    }
+    if (activeTab === 'boarding') redraw();
   }
 
   tabsEl.addEventListener('click', (e) => {

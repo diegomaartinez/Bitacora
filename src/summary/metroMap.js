@@ -1,4 +1,4 @@
-import { formatShortDate } from './canvasUtils.js';
+import { formatShortDate, drawFooterMark } from './canvasUtils.js';
 import { colorHex } from '../colors.js';
 
 const WIDTH = 1080;
@@ -100,10 +100,7 @@ export function drawMetroMap(ctx, { tripData }) {
     }
   });
 
-  ctx.fillStyle = '#83807a';
-  ctx.font = 'italic 500 24px Newsreader';
-  ctx.textAlign = 'center';
-  ctx.fillText('Bitácora', WIDTH / 2, HEIGHT - 60);
+  drawFooterMark(ctx, WIDTH / 2, HEIGHT - 60);
 }
 
 function orderedPlaces(places) {

@@ -69,7 +69,7 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   map = createMap(root.querySelector('#map'), { center: tripData.center, zoom: tripData.zoom });
 
   root.querySelector('[data-action="summary"]').addEventListener('click', () => {
-    openSummaryModal({ tripData, profile });
+    openSummaryModal({ tripData, profile, token, tripFolderId });
   });
 
   function updateSubtitle() {

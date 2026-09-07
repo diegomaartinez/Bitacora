@@ -1,10 +1,11 @@
-import { roundRect, formatShortDate, tripDateRange } from './canvasUtils.js';
-import { computeBounds, projectPoint } from './geo.js';
+import { roundRect, formatShortDate, tripDateRange, drawFooterMark } from './canvasUtils.js';
+import { computeBounds, fitZoomAndCenter, createProjector } from './geo.js';
+import { drawBaseMap } from './tiles.js';
 import { colorHex } from '../colors.js';
 
 const SIZE = 1080;
 
-export function drawInstagramPost(ctx, { tripData, title }) {
+export async function drawInstagramPost(ctx, { tripData, title }) {
   ctx.clearRect(0, 0, SIZE, SIZE);
 
   // Fondo: degradado calido + un par de manchas suaves tipo acuarela.
@@ -60,7 +61,7 @@ export function drawInstagramPost(ctx, { tripData, title }) {
   ctx.save();
   roundRect(ctx, cardX, cardY, cardW, cardH, 28);
   ctx.clip();
-  drawMapContent(ctx, tripData.places, { x: cardX, y: cardY, width: cardW, height: cardH, padding: 46 });
+  await drawMapContent(ctx, tripData.places, { x: cardX, y: cardY, width: cardW, height: cardH, padding: 46 });
   ctx.restore();
 
   ctx.strokeStyle = 'rgba(0,0,0,0.06)';
@@ -76,10 +77,7 @@ export function drawInstagramPost(ctx, { tripData, title }) {
   drawPillRight(ctx, SIZE - 90, 860, placesLabel, '#edf3ec', '#346538');
 
   // Marca
-  ctx.fillStyle = '#83807a';
-  ctx.font = 'italic 500 26px Newsreader';
-  ctx.textAlign = 'center';
-  ctx.fillText('Bitácora', SIZE / 2, 1010);
+  drawFooterMark(ctx, SIZE / 2, 1010);
 }
 
 function fitTitle(ctx, text, x, y, maxWidth) {
@@ -127,21 +125,10 @@ function drawPillRight(ctx, rightX, y, text, bg, fg) {
   drawPill(ctx, rightX - w, y, text, bg, fg);
 }
 
-function drawMapContent(ctx, places, area) {
-  // Fondo tipo "papel de mapa" con lineas sutiles de contorno.
-  ctx.fillStyle = '#f9f8f6';
-  ctx.fillRect(area.x, area.y, area.width, area.height);
-  ctx.strokeStyle = 'rgba(23,24,26,0.05)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 6; i++) {
-    ctx.beginPath();
-    const cx = area.x + area.width * (0.15 + i * 0.16);
-    const cy = area.y + area.height * (0.2 + (i % 3) * 0.28);
-    ctx.arc(cx, cy, 60 + i * 24, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
+async function drawMapContent(ctx, places, area) {
   if (!places.length) {
+    ctx.fillStyle = '#f9f8f6';
+    ctx.fillRect(area.x, area.y, area.width, area.height);
     ctx.fillStyle = '#83807a';
     ctx.font = '500 24px Inter';
     ctx.textAlign = 'center';
@@ -150,14 +137,49 @@ function drawMapContent(ctx, places, area) {
   }
 
   const bounds = computeBounds(places);
-  const points = places.map((p) => ({ ...p, ...projectPoint(p, bounds, area) }));
+  const innerArea = {
+    x: area.x + area.padding,
+    y: area.y + area.padding,
+    width: area.width - area.padding * 2,
+    height: area.height - area.padding * 2,
+  };
+  const fit = fitZoomAndCenter(bounds, innerArea);
+  const projector = createProjector(fit, area);
+
+  let baseMapOk = false;
+  try {
+    baseMapOk = await drawBaseMap(ctx, projector, area);
+  } catch (err) {
+    baseMapOk = false;
+  }
+
+  if (!baseMapOk) {
+    // Sin conexion o tiles bloqueados: fondo tipo "papel de mapa" de reserva.
+    ctx.fillStyle = '#f9f8f6';
+    ctx.fillRect(area.x, area.y, area.width, area.height);
+    ctx.strokeStyle = 'rgba(23,24,26,0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath();
+      const cx = area.x + area.width * (0.15 + i * 0.16);
+      const cy = area.y + area.height * (0.2 + (i % 3) * 0.28);
+      ctx.arc(cx, cy, 60 + i * 24, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  } else {
+    // Velo suave para que los marcadores y el texto destaquen sobre el mapa.
+    ctx.fillStyle = 'rgba(249,248,246,0.18)';
+    ctx.fillRect(area.x, area.y, area.width, area.height);
+  }
+
+  const points = places.map((p) => ({ ...p, ...projector.project(p.lat, p.lng) }));
 
   // Ruta que conecta los lugares en el orden en que se anadieron.
   if (points.length > 1) {
     ctx.save();
     ctx.setLineDash([2, 10]);
     ctx.lineCap = 'round';
-    ctx.strokeStyle = 'rgba(23,24,26,0.35)';
+    ctx.strokeStyle = 'rgba(23,24,26,0.4)';
     ctx.lineWidth = 3;
     ctx.beginPath();
     points.forEach((pt, i) => (i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)));
@@ -183,6 +205,9 @@ function drawMapContent(ctx, places, area) {
       const spaceRight = area.x + area.width - pt.x;
       const spaceLeft = pt.x - area.x;
       const label = truncateToWidth(ctx, pt.name, Math.max(spaceRight, spaceLeft) - 40);
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,255,255,0.9)';
+      ctx.shadowBlur = 6;
       if (spaceRight >= spaceLeft) {
         ctx.textAlign = 'left';
         ctx.fillText(label, pt.x + 22, pt.y + 8);
@@ -190,6 +215,7 @@ function drawMapContent(ctx, places, area) {
         ctx.textAlign = 'right';
         ctx.fillText(label, pt.x - 22, pt.y + 8);
       }
+      ctx.restore();
     } else {
       ctx.font = '700 15px Inter';
       ctx.fillStyle = '#ffffff';
@@ -199,6 +225,14 @@ function drawMapContent(ctx, places, area) {
       ctx.textBaseline = 'alphabetic';
     }
   });
+
+  // Atribucion del mapa (requerida por CARTO/OpenStreetMap).
+  if (baseMapOk) {
+    ctx.font = '500 13px Inter';
+    ctx.fillStyle = 'rgba(23,24,26,0.55)';
+    ctx.textAlign = 'right';
+    ctx.fillText('© OpenStreetMap, © CARTO', area.x + area.width - 12, area.y + area.height - 10);
+  }
 }
 
 function truncateToWidth(ctx, text, maxWidth) {
