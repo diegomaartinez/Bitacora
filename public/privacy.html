@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bitácora — Política de privacidad</title>
+    <style>
+      body {
+        font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
+        max-width: 720px;
+        margin: 60px auto;
+        padding: 0 24px;
+        line-height: 1.7;
+        color: #17181a;
+      }
+      h1 {
+        font-size: 26px;
+      }
+      h2 {
+        font-size: 18px;
+        margin-top: 32px;
+      }
+      code {
+        background: #f4f3f0;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Política de privacidad de Bitácora</h1>
+    <p>
+      Bitácora es una aplicación de código abierto que funciona enteramente en tu navegador: no
+      tiene servidor propio ni base de datos externa. Esta página explica que datos se tratan y
+      donde se guardan.
+    </p>
+
+    <h2>Que datos se usan</h2>
+    <p>
+      Al iniciar sesion con tu cuenta de Google, la aplicacion solicita permiso para: (1) leer tu
+      nombre, foto y correo basicos de tu perfil de Google, y (2) el alcance
+      <code>drive.file</code> de Google Drive, que permite unicamente crear, leer y modificar los
+      archivos y carpetas que la propia aplicacion crea en tu Drive (una carpeta visible llamada
+      "Bitácora"). La aplicacion nunca puede ver, listar ni modificar el resto de tu Google Drive.
+    </p>
+
+    <h2>Donde se guardan tus datos</h2>
+    <p>
+      Todos los viajes, lugares y fotografias que creas se guardan directamente en tu propio
+      Google Drive, bajo tu control exclusivo. Ningun dato se envia ni se copia a ningun servidor
+      de terceros: el navegador habla directamente con las APIs de Google (inicio de sesion y
+      Drive) y con OpenStreetMap/Nominatim, unicamente para mostrar el mapa y buscar nombres de
+      lugares (no se envia ninguna foto ni dato personal a estos servicios, solo el texto que tu
+      escribes en el buscador).
+    </p>
+
+    <h2>Geolocalizacion</h2>
+    <p>
+      La aplicacion no accede en ningun momento a tu ubicacion real ni a la del dispositivo desde
+      el que la usas. El punto de partida de cada viaje es siempre un texto que escribe la propia
+      persona usuaria.
+    </p>
+
+    <h2>Como eliminar tus datos</h2>
+    <p>
+      Puedes borrar todo lo creado por la aplicacion en cualquier momento eliminando la carpeta
+      "Bitácora" desde tu propio Google Drive. Tambien puedes revocar el acceso de la aplicacion en
+      cualquier momento desde
+      <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">
+        la pagina de permisos de tu cuenta de Google</a
+      >.
+    </p>
+
+    <h2>Contacto</h2>
+    <p>
+      Esta aplicacion es un proyecto personal / de codigo abierto. Si tienes dudas sobre esta
+      politica, contacta con quien haya publicado esta instancia concreta de la aplicacion.
+    </p>
+  </body>
+</html>
