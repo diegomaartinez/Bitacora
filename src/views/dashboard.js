@@ -3,6 +3,7 @@ import { searchPlace } from '../geocode.js';
 import { state } from '../state.js';
 import { showToast } from '../toast.js';
 import { renderTopbar } from './topbar.js';
+import { t, getLang } from '../i18n.js';
 
 let debounceTimer = null;
 
@@ -12,14 +13,14 @@ export async function renderDashboard(root, { token, profile, onOpenTrip, onSign
       <div data-role="topbar"></div>
       <div class="dashboard">
         <div class="dashboard-header">
-          <h1>Tus viajes</h1>
-          <p>Cada viaje guarda sus lugares y fotos en una carpeta propia dentro de tu Google Drive.</p>
+          <h1>${t('dashboard.title')}</h1>
+          <p>${t('dashboard.subtitle')}</p>
         </div>
         <div class="new-trip-panel">
-          <h2>Empezar un viaje nuevo</h2>
-          <p class="hint">Escribe un pais, region o ciudad (no usamos tu ubicacion real). Por ejemplo: "Islas Canarias".</p>
+          <h2>${t('dashboard.newTripTitle')}</h2>
+          <p class="hint">${t('dashboard.newTripHint')}</p>
           <div class="search-row">
-            <input type="text" placeholder="¿A donde fuiste?" data-role="new-trip-input" autocomplete="off" />
+            <input type="text" placeholder="${t('dashboard.newTripPlaceholder')}" data-role="new-trip-input" autocomplete="off" />
           </div>
           <ul class="suggestion-list" data-role="new-trip-suggestions" style="display:none"></ul>
         </div>
@@ -31,7 +32,7 @@ export async function renderDashboard(root, { token, profile, onOpenTrip, onSign
   renderTopbar(root.querySelector('[data-role="topbar"]'), { profile, onSignOut });
 
   const grid = root.querySelector('[data-role="trip-grid"]');
-  grid.innerHTML = '<div class="empty-state">Cargando tus viajes...</div>';
+  grid.innerHTML = `<div class="empty-state">${t('dashboard.loadingTrips')}</div>`;
 
   try {
     if (!state.rootFolderId) {
@@ -39,7 +40,7 @@ export async function renderDashboard(root, { token, profile, onOpenTrip, onSign
     }
     await refreshTripGrid(grid, token, onOpenTrip);
   } catch (err) {
-    grid.innerHTML = `<div class="empty-state">No se pudieron cargar los viajes: ${escapeHtml(err.message)}</div>`;
+    grid.innerHTML = `<div class="empty-state">${t('dashboard.loadTripsError', { message: escapeHtml(err.message) })}</div>`;
   }
 
   const input = root.querySelector('[data-role="new-trip-input"]');
@@ -71,7 +72,7 @@ export async function renderDashboard(root, { token, profile, onOpenTrip, onSign
             });
             onOpenTrip(folderId);
           } catch (err) {
-            showToast('No se pudo crear el viaje.', { error: true });
+            showToast(t('dashboard.createTripError'), { error: true });
           } finally {
             input.disabled = false;
           }
@@ -86,16 +87,17 @@ export async function renderDashboard(root, { token, profile, onOpenTrip, onSign
 async function refreshTripGrid(grid, token, onOpenTrip) {
   const trips = await listTrips(token, state.rootFolderId);
   if (!trips.length) {
-    grid.innerHTML = '<div class="empty-state">Todavia no tienes ningun viaje. Crea el primero arriba.</div>';
+    grid.innerHTML = `<div class="empty-state">${t('dashboard.noTrips')}</div>`;
     return;
   }
+  const locale = getLang() === 'en' ? 'en-GB' : 'es-ES';
   grid.innerHTML = `<div class="trip-grid">${trips
     .map(
       (trip, i) => `
         <div class="trip-card" style="--index:${i}" data-folder-id="${trip.id}">
-          <span class="tag">Viaje</span>
+          <span class="tag">${t('dashboard.tripTag')}</span>
           <h3>${escapeHtml(trip.name)}</h3>
-          <p>Creado el ${new Date(trip.createdTime).toLocaleDateString('es-ES')}</p>
+          <p>${t('dashboard.createdOn', { date: new Date(trip.createdTime).toLocaleDateString(locale) })}</p>
         </div>
       `
     )

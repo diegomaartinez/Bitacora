@@ -8,6 +8,7 @@ import { openNamePrompt } from '../promptModal.js';
 import { showToast } from '../toast.js';
 import { renderTopbar } from './topbar.js';
 import { colorHex, colorForIndex } from '../colors.js';
+import { t } from '../i18n.js';
 
 let debounceTimer = null;
 
@@ -22,22 +23,22 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
       <div class="trip-body">
         <aside class="trip-sidebar">
           <div class="trip-sidebar-header">
-            <h2 data-role="trip-title">Cargando...</h2>
+            <h2 data-role="trip-title">${t('trip.loading')}</h2>
             <p data-role="trip-subtitle"></p>
             <div class="sidebar-actions">
-              <button class="btn btn-secondary" data-action="gallery">Ver galeria</button>
-              <button class="btn btn-secondary" data-action="summary">Generar resumen</button>
+              <button class="btn btn-secondary" data-action="gallery">${t('trip.viewGallery')}</button>
+              <button class="btn btn-secondary" data-action="summary">${t('trip.generateSummary')}</button>
             </div>
           </div>
           <div class="place-search">
-            <input type="text" placeholder="Buscar y anadir un lugar" data-role="place-input" autocomplete="off" />
+            <input type="text" placeholder="${t('trip.searchPlacePlaceholder')}" data-role="place-input" autocomplete="off" />
             <ul class="suggestion-list" data-role="place-suggestions" style="display:none"></ul>
           </div>
           <ul class="place-list" data-role="place-list"></ul>
         </aside>
         <div class="map-wrapper">
           <div id="map"></div>
-          <div class="map-add-hint">Haz clic en el mapa para anadir un lugar</div>
+          <div class="map-add-hint">${t('trip.mapAddHint')}</div>
         </div>
       </div>
     </div>
@@ -50,16 +51,17 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   try {
     tripData = await getTripData(token, tripFolderId);
   } catch (err) {
-    showToast('No se pudo cargar el viaje.', { error: true });
+    showToast(t('trip.loadError'), { error: true });
   }
 
   if (!tripData) {
-    tripData = { name: 'Viaje', center: { lat: 28.29, lng: -16.63 }, zoom: 8, places: [] };
+    tripData = { name: t('trip.defaultName'), center: { lat: 28.29, lng: -16.63 }, zoom: 8, places: [] };
   }
   // Compatibilidad con viajes creados antes de tener fecha/color por lugar.
   tripData.places.forEach((p, i) => {
     if (!p.color) p.color = colorForIndex(i);
     if (p.date === undefined) p.date = null;
+    if (!Array.isArray(p.notes)) p.notes = [];
   });
 
   renderTopbar(root.querySelector('[data-role="topbar"]'), {
@@ -82,13 +84,13 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   });
 
   function updateSubtitle() {
-    root.querySelector('[data-role="trip-subtitle"]').textContent = `${tripData.places.length} lugar${
-      tripData.places.length === 1 ? '' : 'es'
-    } guardados`;
+    const count = tripData.places.length;
+    root.querySelector('[data-role="trip-subtitle"]').textContent =
+      count === 1 ? t('trip.placesSavedOne') : t('trip.placesSavedOther', { count });
   }
 
   function formatDate(iso) {
-    if (!iso) return 'Sin fecha';
+    if (!iso) return t('trip.noDate');
     const [y, m, d] = iso.split('-');
     return `${d}/${m}/${y}`;
   }
@@ -96,7 +98,7 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   function renderPlaceList() {
     const listEl = root.querySelector('[data-role="place-list"]');
     if (!tripData.places.length) {
-      listEl.innerHTML = '<li class="place-list-empty">Aun no has anadido ningun lugar. Busca uno o haz clic en el mapa.</li>';
+      listEl.innerHTML = `<li class="place-list-empty">${t('trip.noPlacesYet')}</li>`;
       return;
     }
     listEl.innerHTML = tripData.places
@@ -132,7 +134,7 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
       try {
         await saveTripData(token, tripFolderId, tripData);
       } catch (err) {
-        showToast('No se pudo guardar el cambio en Drive.', { error: true });
+        showToast(t('trip.saveChangeError'), { error: true });
       }
     });
   }
@@ -156,7 +158,7 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
     try {
       await saveTripData(token, tripFolderId, tripData);
     } catch (err) {
-      showToast('No se pudo guardar el lugar en Drive.', { error: true });
+      showToast(t('trip.savePlaceError'), { error: true });
     }
   }
 
@@ -176,7 +178,7 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
       await persistNewPlace(place);
       openPlaceGallery(place);
     } catch (err) {
-      showToast('No se pudo crear el lugar.', { error: true });
+      showToast(t('trip.createPlaceError'), { error: true });
     }
   }
 
@@ -189,10 +191,10 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
       // ignore, se pedira el nombre igualmente
     }
     const name = await openNamePrompt({
-      title: 'Nombre de este lugar',
-      description: 'Se anadira como un lugar nuevo en tu viaje.',
+      title: t('trip.namePromptTitle'),
+      description: t('trip.namePromptDescription'),
       initialValue: suggested,
-      confirmLabel: 'Anadir lugar',
+      confirmLabel: t('trip.namePromptConfirm'),
     });
     if (name) createPlace(name, lat, lng);
   });

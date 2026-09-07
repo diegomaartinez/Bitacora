@@ -3,12 +3,16 @@ import { drawBoardingPass, BOARDING_PASS_WIDTH, BOARDING_PASS_HEIGHT } from './b
 import { drawMetroMap, METRO_WIDTH, METRO_HEIGHT } from './metroMap.js';
 import { ensureFontsReady, downloadCanvas } from './canvasUtils.js';
 import { ensureTripShareLink } from '../drive.js';
+import { SUMMARY_THEMES, DEFAULT_THEME_KEY } from './themes.js';
+import { t } from '../i18n.js';
 
-const TABS = [
-  { key: 'instagram', label: 'Mapa' },
-  { key: 'boarding', label: 'Billete de avion' },
-  { key: 'metro', label: 'Guia de metro' },
-];
+function getTabs() {
+  return [
+    { key: 'instagram', label: t('summaryModal.tabMap') },
+    { key: 'boarding', label: t('summaryModal.tabBoardingPass') },
+    { key: 'metro', label: t('summaryModal.tabMetro') },
+  ];
+}
 
 const DIACRITICS_RE = /[\u0300-\u036f]/g;
 
@@ -32,6 +36,8 @@ export function openSummaryModal({ tripData, profile, token, tripFolderId }) {
   let shareError = false;
   let shareRequested = false;
   let renderToken = 0;
+  let themeKey = DEFAULT_THEME_KEY;
+  let passengerName = profile?.name || '';
 
   overlayEl = document.createElement('div');
   overlayEl.className = 'modal-overlay';
@@ -39,14 +45,14 @@ export function openSummaryModal({ tripData, profile, token, tripFolderId }) {
     <div class="modal-panel summary-panel">
       <div class="modal-header">
         <div>
-          <h2>Resumen para compartir</h2>
-          <p>Genera una imagen lista para publicar en redes sociales.</p>
+          <h2>${t('summaryModal.title')}</h2>
+          <p>${t('summaryModal.subtitle')}</p>
         </div>
-        <button class="btn btn-text" data-action="close">Cerrar</button>
+        <button class="btn btn-text" data-action="close">${t('summaryModal.close')}</button>
       </div>
       <div class="summary-tabs" data-role="tabs">
-        ${TABS.map(
-          (t) => `<button type="button" class="summary-tab ${t.key === activeTab ? 'active' : ''}" data-tab="${t.key}">${t.label}</button>`
+        ${getTabs().map(
+          (tab) => `<button type="button" class="summary-tab ${tab.key === activeTab ? 'active' : ''}" data-tab="${tab.key}">${tab.label}</button>`
         ).join('')}
       </div>
       <div class="modal-body summary-body">
@@ -54,14 +60,30 @@ export function openSummaryModal({ tripData, profile, token, tripFolderId }) {
         <div class="summary-canvas-wrap">
           <canvas data-role="canvas"></canvas>
         </div>
-        <button class="btn btn-primary summary-download" data-action="download">Descargar imagen</button>
+        <button class="btn btn-primary summary-download" data-action="download">${t('summaryModal.download')}</button>
       </div>
     </div>
   `;
   document.body.appendChild(overlayEl);
 
+  function renderTabs() {
+    tabsEl.innerHTML = getTabs()
+      .map(
+        (tab) => `<button type="button" class="summary-tab ${tab.key === activeTab ? 'active' : ''}" data-tab="${tab.key}">${tab.label}</button>`
+      )
+      .join('');
+  }
+
+  function handleLangChange() {
+    renderTabs();
+    renderControls();
+    redraw();
+  }
+  window.addEventListener('td:langchange', handleLangChange);
+
   overlayEl.addEventListener('click', (e) => {
     if (e.target === overlayEl || e.target.dataset.action === 'close') {
+      window.removeEventListener('td:langchange', handleLangChange);
       overlayEl.remove();
       overlayEl = null;
     }
@@ -72,20 +94,71 @@ export function openSummaryModal({ tripData, profile, token, tripFolderId }) {
   const controls = overlayEl.querySelector('[data-role="controls"]');
   const tabsEl = overlayEl.querySelector('[data-role="tabs"]');
 
+  function themeRowHtml() {
+    return `
+      <div class="meta-field">
+        <span>${t('summaryModal.colorStyle')}</span>
+        <div class="color-swatch-row" data-role="theme-row">
+          ${SUMMARY_THEMES.map(
+            (t) => `
+              <button
+                type="button"
+                class="color-swatch ${t.key === themeKey ? 'selected' : ''}"
+                data-theme="${t.key}"
+                style="background:${t.swatch}"
+                title="${t.label}"
+                aria-label="${t.label}"
+              ></button>
+            `
+          ).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function bindThemeRow() {
+    const themeRow = controls.querySelector('[data-role="theme-row"]');
+    if (!themeRow) return;
+    themeRow.addEventListener('click', (e) => {
+      const btn = e.target.closest('.color-swatch');
+      if (!btn) return;
+      themeKey = btn.dataset.theme;
+      themeRow.querySelectorAll('.color-swatch').forEach((el) => el.classList.remove('selected'));
+      btn.classList.add('selected');
+      redraw();
+    });
+  }
+
   function renderControls() {
     if (activeTab === 'instagram') {
       controls.innerHTML = `
         <label class="meta-field">
-          <span>Titulo de la instantanea</span>
+          <span>${t('summaryModal.snapshotTitle')}</span>
           <input type="text" data-role="title-input" value="${escapeAttr(title)}" maxlength="40" />
         </label>
+        ${themeRowHtml()}
       `;
       controls.querySelector('[data-role="title-input"]').addEventListener('input', (e) => {
         title = e.target.value;
         redraw();
       });
+      bindThemeRow();
+    } else if (activeTab === 'boarding') {
+      controls.innerHTML = `
+        <label class="meta-field">
+          <span>${t('summaryModal.passengerName')}</span>
+          <input type="text" data-role="passenger-input" value="${escapeAttr(passengerName)}" maxlength="40" />
+        </label>
+        ${themeRowHtml()}
+      `;
+      controls.querySelector('[data-role="passenger-input"]').addEventListener('input', (e) => {
+        passengerName = e.target.value;
+        redraw();
+      });
+      bindThemeRow();
     } else {
-      controls.innerHTML = '';
+      controls.innerHTML = themeRowHtml();
+      bindThemeRow();
     }
   }
 
@@ -96,16 +169,16 @@ export function openSummaryModal({ tripData, profile, token, tripFolderId }) {
     if (activeTab === 'instagram') {
       canvas.width = INSTAGRAM_SIZE;
       canvas.height = INSTAGRAM_SIZE;
-      await drawInstagramPost(ctx, { tripData, title });
+      await drawInstagramPost(ctx, { tripData, title, theme: themeKey });
     } else if (activeTab === 'boarding') {
       canvas.width = BOARDING_PASS_WIDTH;
       canvas.height = BOARDING_PASS_HEIGHT;
-      await drawBoardingPass(ctx, { tripData, passengerName: profile?.name, shareUrl, shareError });
+      await drawBoardingPass(ctx, { tripData, passengerName, shareUrl, shareError, theme: themeKey });
       if (myToken === renderToken) requestShareLink();
     } else {
       canvas.width = METRO_WIDTH;
       canvas.height = METRO_HEIGHT;
-      drawMetroMap(ctx, { tripData });
+      drawMetroMap(ctx, { tripData, theme: themeKey });
     }
   }
 

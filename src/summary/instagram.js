@@ -2,16 +2,19 @@ import { roundRect, formatShortDate, tripDateRange, drawFooterMark } from './can
 import { computeBounds, fitZoomAndCenter, createProjector } from './geo.js';
 import { drawBaseMap } from './tiles.js';
 import { colorHex } from '../colors.js';
+import { getTheme } from './themes.js';
+import { t } from '../i18n.js';
 
 const SIZE = 1080;
 
-export async function drawInstagramPost(ctx, { tripData, title }) {
+export async function drawInstagramPost(ctx, { tripData, title, theme }) {
+  const theme_ = getTheme(theme);
   ctx.clearRect(0, 0, SIZE, SIZE);
 
   // Fondo: degradado calido + un par de manchas suaves tipo acuarela.
   const bg = ctx.createLinearGradient(0, 0, SIZE, SIZE);
-  bg.addColorStop(0, '#fbf6ee');
-  bg.addColorStop(1, '#f4e7d6');
+  bg.addColorStop(0, theme_.bgFrom);
+  bg.addColorStop(1, theme_.bgTo);
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, SIZE, SIZE);
 
@@ -24,8 +27,8 @@ export async function drawInstagramPost(ctx, { tripData, title }) {
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
   };
-  blob(120, 120, 420, 'rgba(224,86,143,0.10)');
-  blob(SIZE - 100, SIZE - 160, 460, 'rgba(63,126,222,0.10)');
+  blob(120, 120, 420, theme_.blobA);
+  blob(SIZE - 100, SIZE - 160, 460, theme_.blobB);
 
   // Cabecera
   ctx.fillStyle = '#83807a';
@@ -34,15 +37,15 @@ export async function drawInstagramPost(ctx, { tripData, title }) {
   ctx.textBaseline = 'alphabetic';
   ctx.save();
   ctx.font = '600 22px Inter';
-  ctx.fillStyle = '#956400';
-  const eyebrow = 'DIARIO DE VIAJE';
+  ctx.fillStyle = theme_.eyebrow;
+  const eyebrow = t('summary.instagram.eyebrow');
   drawTracked(ctx, eyebrow, SIZE / 2, 96, 3);
   ctx.restore();
 
   ctx.fillStyle = '#17181a';
   ctx.font = 'italic 500 78px Newsreader';
   ctx.textAlign = 'center';
-  fitTitle(ctx, title || 'Mi viaje', SIZE / 2, 190, SIZE - 160);
+  fitTitle(ctx, title || t('summary.instagram.defaultTitle'), SIZE / 2, 190, SIZE - 160);
 
   // Tarjeta del mapa
   const cardX = 90;
@@ -71,10 +74,11 @@ export async function drawInstagramPost(ctx, { tripData, title }) {
 
   // Pie: fechas y numero de lugares
   const { start, end } = tripDateRange(tripData.places);
-  const dateLabel = start && end ? `${formatShortDate(start)} — ${formatShortDate(end)}` : 'Sin fechas todavia';
-  drawPill(ctx, 90, 860, dateLabel, '#e1f3fe', '#1f6c9f');
-  const placesLabel = `${tripData.places.length} lugar${tripData.places.length === 1 ? '' : 'es'}`;
-  drawPillRight(ctx, SIZE - 90, 860, placesLabel, '#edf3ec', '#346538');
+  const dateLabel = start && end ? `${formatShortDate(start)} — ${formatShortDate(end)}` : t('summary.instagram.noDatesYet');
+  drawPill(ctx, 90, 860, dateLabel, theme_.pillA.bg, theme_.pillA.fg);
+  const placesLabel =
+    tripData.places.length === 1 ? t('summary.instagram.placesOne') : t('summary.instagram.placesOther', { count: tripData.places.length });
+  drawPillRight(ctx, SIZE - 90, 860, placesLabel, theme_.pillB.bg, theme_.pillB.fg);
 
   // Marca
   drawFooterMark(ctx, SIZE / 2, 1010);
@@ -132,7 +136,7 @@ async function drawMapContent(ctx, places, area) {
     ctx.fillStyle = '#83807a';
     ctx.font = '500 24px Inter';
     ctx.textAlign = 'center';
-    ctx.fillText('Todavia no hay lugares marcados', area.x + area.width / 2, area.y + area.height / 2);
+    ctx.fillText(t('summary.instagram.noPlacesYet'), area.x + area.width / 2, area.y + area.height / 2);
     return;
   }
 

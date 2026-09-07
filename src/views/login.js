@@ -1,30 +1,34 @@
 import { initAuth, isConfigured, signIn } from '../auth.js';
 import { showToast } from '../toast.js';
+import { t, langSwitcherHtml, bindLangSwitcher } from '../i18n.js';
 
 export function renderLogin(root, onSignedIn) {
   root.innerHTML = `
     <div class="login-screen">
+      <div class="login-lang-switch">${langSwitcherHtml()}</div>
       <div class="login-card">
         <span class="brand-mark">Bitácora</span>
-        <h1>Tu mapa de viajes, con tus fotos</h1>
-        <p>Elige un destino, marca los lugares por los que has pasado y guarda las fotos de cada uno. Todo se guarda directamente en tu Google Drive.</p>
+        <h1>${t('login.tagline')}</h1>
+        <p>${t('login.description')}</p>
         <button class="google-btn" data-action="signin">
           ${googleIcon()}
-          Continuar con Google
+          ${t('login.continueGoogle')}
         </button>
-        <p class="login-note">Solo se solicita acceso a una carpeta "Bitácora" propia dentro de tu Drive; no accedemos al resto de tus archivos.</p>
+        <p class="login-note">${t('login.privacyNote')}</p>
         ${!isConfigured() ? configWarning() : ''}
         <div class="error-banner" data-role="error" style="display:none"></div>
       </div>
     </div>
   `;
 
+  bindLangSwitcher(root.querySelector('.login-lang-switch'));
+
   const errorEl = root.querySelector('[data-role="error"]');
   const button = root.querySelector('[data-action="signin"]');
 
   button.addEventListener('click', async () => {
     if (!isConfigured()) {
-      showToast('Configura GOOGLE_CLIENT_ID en src/config.js antes de continuar.', { error: true });
+      showToast(t('login.configureClientId'), { error: true });
       return;
     }
     button.disabled = true;
@@ -34,7 +38,7 @@ export function renderLogin(root, onSignedIn) {
       const { accessToken, profile } = await signIn();
       onSignedIn(accessToken, profile);
     } catch (err) {
-      errorEl.textContent = err.message || 'No se pudo iniciar sesion con Google.';
+      errorEl.textContent = err.message || t('login.signInGenericError');
       errorEl.style.display = 'block';
     } finally {
       button.disabled = false;
@@ -45,8 +49,7 @@ export function renderLogin(root, onSignedIn) {
 function configWarning() {
   return `
     <div class="config-warning">
-      Falta configurar las credenciales de Google. Abre <code>src/config.js</code> y pega tu Client ID de OAuth
-      (mira README.md para los pasos completos en Google Cloud Console).
+      ${t('login.configWarning')}
     </div>
   `;
 }

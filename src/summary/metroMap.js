@@ -1,32 +1,35 @@
 import { formatShortDate, drawFooterMark } from './canvasUtils.js';
 import { colorHex } from '../colors.js';
+import { getTheme } from './themes.js';
+import { t } from '../i18n.js';
 
 const WIDTH = 1080;
 const HEIGHT = 1350;
 
-export function drawMetroMap(ctx, { tripData }) {
+export function drawMetroMap(ctx, { tripData, theme }) {
+  const theme_ = getTheme(theme);
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
   ctx.fillStyle = '#fbfbfa';
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
   // Cabecera
-  ctx.fillStyle = '#956400';
+  ctx.fillStyle = theme_.eyebrow;
   ctx.font = '700 20px Inter';
   ctx.textAlign = 'center';
-  drawTracked(ctx, 'GUIA DE VIAJE', WIDTH / 2, 90, 3);
+  drawTracked(ctx, t('summary.metro.eyebrow'), WIDTH / 2, 90, 3);
 
   ctx.fillStyle = '#17181a';
   ctx.font = 'italic 500 58px Newsreader';
   ctx.textAlign = 'center';
-  fitTitle(ctx, `Linea ${tripData.name || ''}`.trim(), WIDTH / 2, 156, WIDTH - 160);
+  fitTitle(ctx, `${t('summary.metro.linePrefix')} ${tripData.name || ''}`.trim(), WIDTH / 2, 156, WIDTH - 160);
 
   const places = orderedPlaces(tripData.places);
 
   ctx.fillStyle = '#83807a';
   ctx.font = '500 22px Inter';
   ctx.fillText(
-    `${places.length} estacion${places.length === 1 ? '' : 'es'} visitada${places.length === 1 ? '' : 's'}`,
+    places.length === 1 ? t('summary.metro.stationsOne') : t('summary.metro.stationsOther', { count: places.length }),
     WIDTH / 2,
     196
   );
@@ -34,7 +37,7 @@ export function drawMetroMap(ctx, { tripData }) {
   if (!places.length) {
     ctx.fillStyle = '#83807a';
     ctx.font = '500 26px Inter';
-    ctx.fillText('Anade lugares al viaje para generar la linea', WIDTH / 2, HEIGHT / 2);
+    ctx.fillText(t('summary.metro.addPlacesHint'), WIDTH / 2, HEIGHT / 2);
     return;
   }
 

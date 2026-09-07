@@ -1,3 +1,5 @@
+import { t, getLang } from '../i18n.js';
+
 export function roundRect(ctx, x, y, w, h, r) {
   const radius = typeof r === 'number' ? { tl: r, tr: r, br: r, bl: r } : r;
   ctx.beginPath();
@@ -71,13 +73,15 @@ export function downloadCanvas(canvas, filename) {
 export function formatShortDate(iso) {
   if (!iso) return null;
   const d = new Date(`${iso}T00:00:00`);
-  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }).replace('.', '');
+  const locale = getLang() === 'en' ? 'en-GB' : 'es-ES';
+  return d.toLocaleDateString(locale, { day: '2-digit', month: 'short' }).replace('.', '');
 }
 
 export function formatShortDateWithYear(iso) {
   if (!iso) return null;
   const d = new Date(`${iso}T00:00:00`);
-  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '');
+  const locale = getLang() === 'en' ? 'en-GB' : 'es-ES';
+  return d.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '');
 }
 
 /** Calcula el rango de fechas (min/max) entre los lugares que tienen fecha. */
@@ -92,7 +96,7 @@ export function drawFooterMark(ctx, centerX, y, { color = '#83807a' } = {}) {
   const prevAlign = ctx.textAlign;
   const fontA = '500 20px Inter';
   const fontB = 'italic 500 22px Newsreader';
-  const textA = 'Hecho con ·';
+  const textA = t('summary.footerMadeWith');
   const textB = 'Bitácora';
   ctx.font = fontA;
   const widthA = ctx.measureText(textA).width;

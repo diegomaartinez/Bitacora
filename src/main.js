@@ -8,8 +8,10 @@ import { state } from './state.js';
 const root = document.getElementById('app');
 
 let session = null; // { token, profile }
+let currentRender = () => showLogin();
 
 function showLogin() {
+  currentRender = () => showLogin();
   session = null;
   state.rootFolderId = null;
   renderLogin(root, (token, profile) => {
@@ -19,6 +21,7 @@ function showLogin() {
 }
 
 function showDashboard() {
+  currentRender = () => showDashboard();
   if (!session) return showLogin();
   renderDashboard(root, {
     token: session.token,
@@ -29,6 +32,7 @@ function showDashboard() {
 }
 
 function showTrip(tripFolderId) {
+  currentRender = () => showTrip(tripFolderId);
   if (!session) return showLogin();
   renderTrip(root, {
     token: session.token,
@@ -44,5 +48,6 @@ function handleSignOut() {
 }
 
 window.addEventListener('td:signout', handleSignOut);
+window.addEventListener('td:langchange', () => currentRender());
 
 showLogin();

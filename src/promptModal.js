@@ -5,6 +5,8 @@
 // estilo y sin poder personalizarse).
 // ---------------------------------------------------------------------------
 
+import { t } from './i18n.js';
+
 let overlayEl = null;
 
 function closeModal(resolve, value) {
@@ -20,11 +22,11 @@ function closeModal(resolve, value) {
  * resuelve con el texto introducido (recortado) o null si se cancela.
  */
 export function openNamePrompt({
-  title = 'Nombre de este lugar',
+  title = t('prompt.defaultTitle'),
   description = '',
   initialValue = '',
-  confirmLabel = 'Anadir',
-  placeholder = 'Escribe un nombre...',
+  confirmLabel = t('prompt.defaultConfirm'),
+  placeholder = t('prompt.defaultPlaceholder'),
 } = {}) {
   return new Promise((resolve) => {
     if (overlayEl) overlayEl.remove();
@@ -44,7 +46,7 @@ export function openNamePrompt({
             placeholder
           )}" value="${escapeHtml(initialValue)}" />
           <div class="prompt-actions">
-            <button type="button" class="btn btn-text" data-action="cancel">Cancelar</button>
+            <button type="button" class="btn btn-text" data-action="cancel">${t('prompt.cancel')}</button>
             <button type="button" class="btn btn-primary" data-action="confirm">${escapeHtml(confirmLabel)}</button>
           </div>
         </div>

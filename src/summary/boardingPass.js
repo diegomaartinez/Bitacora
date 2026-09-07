@@ -1,19 +1,22 @@
 import { roundRect, formatShortDateWithYear, tripDateRange, drawFooterMark } from './canvasUtils.js';
 import { getQrCanvas } from './qr.js';
+import { getTheme } from './themes.js';
+import { t } from '../i18n.js';
 
 const WIDTH = 1500;
 const HEIGHT = 640;
 const STUB_WIDTH = 340;
 
-export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl, shareError }) {
+export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl, shareError, theme }) {
+  const theme_ = getTheme(theme);
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
   // Fondo
-  ctx.fillStyle = '#f4e7d6';
+  ctx.fillStyle = theme_.bgTo;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
   const bg = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
-  bg.addColorStop(0, 'rgba(63,126,222,0.05)');
-  bg.addColorStop(1, 'rgba(224,86,143,0.05)');
+  bg.addColorStop(0, theme_.boardingWashFrom);
+  bg.addColorStop(1, theme_.boardingWashTo);
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -37,7 +40,7 @@ export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl,
   ctx.save();
   roundRect(ctx, cardX, cardY, cardW, cardH, 22);
   ctx.clip();
-  ctx.fillStyle = '#f4e7d6';
+  ctx.fillStyle = theme_.bgTo;
   ctx.beginPath();
   ctx.arc(perforationX, cardY, 20, 0, Math.PI * 2);
   ctx.fill();
@@ -61,9 +64,9 @@ export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl,
   let cursorY = cardY + 66;
 
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#956400';
+  ctx.fillStyle = theme_.eyebrow;
   ctx.font = '700 20px Inter';
-  drawTracked(ctx, 'TARJETA DE EMBARQUE · BITÁCORA', cardX + padX, cursorY, 2.5);
+  drawTracked(ctx, t('summary.boarding.headerTag'), cardX + padX, cursorY, 2.5);
 
   ctx.fillStyle = '#17181a';
   ctx.font = '600 26px Inter';
@@ -72,22 +75,22 @@ export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl,
   ctx.textAlign = 'left';
 
   cursorY += 60;
-  labelValue(ctx, cardX + padX, cursorY, 'PASAJERO', (passengerName || 'Viajero').toUpperCase());
+  labelValue(ctx, cardX + padX, cursorY, t('summary.boarding.passenger'), (passengerName || t('summary.boarding.defaultPassenger')).toUpperCase());
 
   cursorY += 100;
-  const destino = tripData.name || 'Destino desconocido';
+  const destino = tripData.name || t('summary.boarding.unknownDestination');
   ctx.fillStyle = '#83807a';
   ctx.font = '600 18px Inter';
-  drawTracked(ctx, 'DESTINO', cardX + padX, cursorY, 2);
+  drawTracked(ctx, t('summary.boarding.destination'), cardX + padX, cursorY, 2);
   ctx.fillStyle = '#17181a';
   fitDestino(ctx, destino, cardX + padX, cursorY + 62, perforationX - (cardX + padX) - 40);
 
   cursorY += 150;
   const { start, end } = tripDateRange(tripData.places);
   const colWidth = (perforationX - (cardX + padX) - 60) / 3;
-  labelValue(ctx, cardX + padX, cursorY, 'SALIDA', start ? formatShortDateWithYear(start) : '—');
-  labelValue(ctx, cardX + padX + colWidth, cursorY, 'LLEGADA', end ? formatShortDateWithYear(end) : '—');
-  labelValue(ctx, cardX + padX + colWidth * 2, cursorY, 'LUGARES', String(tripData.places.length));
+  labelValue(ctx, cardX + padX, cursorY, t('summary.boarding.departure'), start ? formatShortDateWithYear(start) : '—');
+  labelValue(ctx, cardX + padX + colWidth, cursorY, t('summary.boarding.arrival'), end ? formatShortDateWithYear(end) : '—');
+  labelValue(ctx, cardX + padX + colWidth * 2, cursorY, t('summary.boarding.places'), String(tripData.places.length));
 
   // ------------------------------ Stub ------------------------------
   const stubX = perforationX + 36;
@@ -98,7 +101,7 @@ export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl,
   ctx.textAlign = 'center';
   ctx.fillStyle = '#83807a';
   ctx.font = '600 16px Inter';
-  drawTracked(ctx, 'DESTINO', 0, 0, 2, true);
+  drawTracked(ctx, t('summary.boarding.destination'), 0, 0, 2, true);
   ctx.restore();
 
   ctx.fillStyle = '#17181a';
@@ -114,16 +117,16 @@ export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl,
       const qrCanvas = await getQrCanvas(shareUrl, qrSize * 2);
       ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
     } catch (err) {
-      drawQrPlaceholder(ctx, qrX, qrY, qrSize, 'Error al generar');
+      drawQrPlaceholder(ctx, qrX, qrY, qrSize, t('summary.boarding.generateError'));
     }
   } else {
-    drawQrPlaceholder(ctx, qrX, qrY, qrSize, shareError ? 'Enlace no disponible' : 'Generando codigo…');
+    drawQrPlaceholder(ctx, qrX, qrY, qrSize, shareError ? t('summary.boarding.linkUnavailable') : t('summary.boarding.generatingCode'));
   }
 
   ctx.fillStyle = '#83807a';
   ctx.font = '500 13px Inter';
   ctx.textAlign = 'center';
-  ctx.fillText('Escanea para ver las fotos', stubCenter, qrY + qrSize + 26);
+  ctx.fillText(t('summary.boarding.scanToSeePhotos'), stubCenter, qrY + qrSize + 26);
 
   drawFooterMark(ctx, stubCenter, cardY + cardH - 30);
 }

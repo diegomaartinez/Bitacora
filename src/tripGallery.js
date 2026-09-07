@@ -1,4 +1,5 @@
 import { listTripPhotos, getPhotoBlobUrl } from './drive.js';
+import { t } from './i18n.js';
 
 let overlayEl = null;
 let photos = [];
@@ -15,7 +16,7 @@ function closeModal() {
 }
 
 function formatDate(iso) {
-  if (!iso) return 'Sin fecha';
+  if (!iso) return t('trip.noDate');
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
 }
@@ -42,19 +43,19 @@ export async function openTripGallery(token, tripData) {
     <div class="modal-panel gallery-panel">
       <div class="modal-header">
         <div>
-          <h2>Fotos del viaje</h2>
-          <p data-role="count">Cargando fotos...</p>
+          <h2>${t('tripGallery.title')}</h2>
+          <p data-role="count">${t('tripGallery.loadingPhotos')}</p>
         </div>
         <div class="gallery-header-actions">
           <div class="view-toggle" data-role="view-toggle">
-            <button type="button" class="view-toggle-btn active" data-view="grid">Cuadricula</button>
-            <button type="button" class="view-toggle-btn" data-view="carousel">Carrusel</button>
+            <button type="button" class="view-toggle-btn active" data-view="grid">${t('tripGallery.grid')}</button>
+            <button type="button" class="view-toggle-btn" data-view="carousel">${t('tripGallery.carousel')}</button>
           </div>
-          <button class="btn btn-text" data-action="close">Cerrar</button>
+          <button class="btn btn-text" data-action="close">${t('tripGallery.close')}</button>
         </div>
       </div>
       <div class="modal-body gallery-body" data-role="body">
-        <div class="gallery-empty">Cargando fotos...</div>
+        <div class="gallery-empty">${t('tripGallery.loadingPhotos')}</div>
       </div>
     </div>
   `;
@@ -77,18 +78,20 @@ export async function openTripGallery(token, tripData) {
   try {
     photos = await listTripPhotos(token, tripData.places);
   } catch (err) {
-    bodyEl.innerHTML = '<div class="gallery-empty">No se pudieron cargar las fotos.</div>';
+    bodyEl.innerHTML = `<div class="gallery-empty">${t('tripGallery.loadError')}</div>`;
     return;
   }
 
   if (!overlayEl) return; // se pudo cerrar mientras cargaba
 
   countEl.textContent = photos.length
-    ? `${photos.length} foto${photos.length === 1 ? '' : 's'}`
-    : 'Todavia no hay fotos en este viaje';
+    ? photos.length === 1
+      ? t('tripGallery.photoCountOne')
+      : t('tripGallery.photoCountOther', { count: photos.length })
+    : t('tripGallery.noPhotosYet');
 
   if (!photos.length) {
-    bodyEl.innerHTML = '<div class="gallery-empty">Sube fotos a algun lugar del viaje para verlas aqui.</div>';
+    bodyEl.innerHTML = `<div class="gallery-empty">${t('tripGallery.noPhotosHint')}</div>`;
     return;
   }
 
@@ -138,7 +141,7 @@ async function loadGridImages(grid) {
         item.innerHTML = `<img src="${url}" alt="${escapeHtml(photo.placeName)}" loading="lazy" />`;
       } catch (err) {
         const item = items[i];
-        if (item) item.innerHTML = '<div class="gallery-empty">Error</div>';
+        if (item) item.innerHTML = `<div class="gallery-empty">${t('tripGallery.photoError')}</div>`;
       }
     })
   );
@@ -149,11 +152,11 @@ function renderCarousel(bodyEl) {
   const photo = photos[carouselIndex];
   bodyEl.innerHTML = `
     <div class="carousel">
-      <button type="button" class="carousel-nav carousel-prev" data-action="prev" aria-label="Anterior">&larr;</button>
+      <button type="button" class="carousel-nav carousel-prev" data-action="prev" aria-label="${t('tripGallery.prev')}">&larr;</button>
       <div class="carousel-frame" data-role="frame">
         <div class="photo-skeleton"></div>
       </div>
-      <button type="button" class="carousel-nav carousel-next" data-action="next" aria-label="Siguiente">&rarr;</button>
+      <button type="button" class="carousel-nav carousel-next" data-action="next" aria-label="${t('tripGallery.next')}">&rarr;</button>
     </div>
     <div class="carousel-caption">
       <div>
@@ -187,7 +190,7 @@ function renderCarousel(bodyEl) {
       frame.innerHTML = `<img src="${url}" alt="${escapeHtml(photo.placeName)}" />`;
     })
     .catch(() => {
-      frame.innerHTML = '<div class="gallery-empty">No se pudo cargar la foto.</div>';
+      frame.innerHTML = `<div class="gallery-empty">${t('tripGallery.carouselLoadError')}</div>`;
     });
 }
 
