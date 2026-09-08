@@ -760,6 +760,11 @@ a {
   min-height: 0;
 }
 
+.map-toggle-btn,
+.map-close-btn {
+  display: none;
+}
+
 /* ------------------------------- Gallery modal ---------------------------- */
 
 .modal-overlay {
@@ -1213,9 +1218,138 @@ a {
   gap: 20px;
 }
 
+.summary-controls-details {
+  width: 100%;
+  max-width: 320px;
+}
+
+.summary-controls-summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 6px 2px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.summary-controls-summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary-controls-summary::before {
+  content: '▸';
+  font-size: 11px;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.summary-controls-details[open] > .summary-controls-summary::before {
+  transform: rotate(90deg);
+}
+
 .summary-controls {
   width: 100%;
   max-width: 320px;
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.summary-hint {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+}
+
+.transport-type-row {
+  display: flex;
+  gap: 8px;
+}
+
+.transport-type-btn {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.transport-type-btn.selected {
+  border-color: var(--ink);
+  background: var(--surface);
+}
+
+.cover-photo-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.cover-photo-thumb {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+  background: var(--surface-muted);
+}
+
+.cover-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cover-photo-thumb.selected {
+  border-color: var(--ink);
+}
+
+.cover-places-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.cover-places-checklist li {
+  border-bottom: 1px solid var(--border);
+}
+
+.cover-places-checklist li:last-child {
+  border-bottom: none;
+}
+
+.cover-place-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cover-place-check input:disabled {
+  cursor: not-allowed;
+}
+
+.cover-place-check input:disabled + span {
+  color: var(--muted);
 }
 
 .summary-canvas-wrap {
@@ -1457,13 +1591,62 @@ a {
 @media (max-width: 780px) {
   .trip-body {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: 1fr;
   }
 
   .trip-sidebar {
     border-right: none;
-    border-bottom: 1px solid var(--border);
-    max-height: 240px;
+    max-height: none;
+  }
+
+  .sidebar-actions {
+    flex-wrap: wrap;
+  }
+
+  .sidebar-actions .map-toggle-btn {
+    flex-basis: 100%;
+  }
+
+  /*
+   * En movil el mapa arranca oculto (la lista de lugares ocupa toda la
+   * pantalla) y solo aparece a pantalla completa cuando se pulsa "Ver
+   * mapa", para no comerse mas de la mitad de la pantalla por defecto.
+   */
+  .map-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .map-wrapper {
+    display: none;
+  }
+
+  .map-wrapper.map-open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    background: var(--surface);
+  }
+
+  .map-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 910;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    font-size: 16px;
+    cursor: pointer;
   }
 
   .modal-overlay {

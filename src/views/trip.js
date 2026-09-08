@@ -29,6 +29,7 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
             <div class="sidebar-actions">
               <button class="btn btn-secondary" data-action="gallery">${t('trip.viewGallery')}</button>
               <button class="btn btn-secondary" data-action="summary">${t('trip.generateSummary')}</button>
+              <button class="btn btn-secondary map-toggle-btn" data-action="toggle-map">${t('trip.viewMap')}</button>
             </div>
           </div>
           <div class="place-search">
@@ -37,7 +38,8 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
           </div>
           <ul class="place-list" data-role="place-list"></ul>
         </aside>
-        <div class="map-wrapper">
+        <div class="map-wrapper" data-role="map-wrapper">
+          <button type="button" class="map-close-btn" data-action="close-map" aria-label="${t('trip.closeMap')}">✕</button>
           <div id="map"></div>
           <div class="map-add-hint">${t('trip.mapAddHint')}</div>
         </div>
@@ -98,6 +100,17 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
 
   root.querySelector('[data-action="gallery"]').addEventListener('click', () => {
     openTripGallery(token, tripData);
+  });
+
+  // En movil el mapa empieza oculto (la lista de lugares es lo principal);
+  // este boton lo abre a pantalla completa, y el de cerrar lo vuelve a ocultar.
+  const mapWrapperEl = root.querySelector('[data-role="map-wrapper"]');
+  root.querySelector('[data-action="toggle-map"]')?.addEventListener('click', () => {
+    mapWrapperEl.classList.add('map-open');
+    setTimeout(() => map && map.invalidateSize(), 250);
+  });
+  root.querySelector('[data-action="close-map"]')?.addEventListener('click', () => {
+    mapWrapperEl.classList.remove('map-open');
   });
 
   function updateSubtitle() {

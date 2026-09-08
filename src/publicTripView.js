@@ -26,10 +26,14 @@ export async function renderPublicTrip(root, { tripFolderId }) {
           <div class="trip-sidebar-header">
             <h2 data-role="trip-title">${t('trip.loading')}</h2>
             <p data-role="trip-subtitle"></p>
+            <div class="sidebar-actions">
+              <button type="button" class="btn btn-secondary map-toggle-btn" data-action="toggle-map">${t('trip.viewMap')}</button>
+            </div>
           </div>
           <ul class="place-list" data-role="place-list"></ul>
         </aside>
-        <div class="map-wrapper">
+        <div class="map-wrapper" data-role="map-wrapper">
+          <button type="button" class="map-close-btn" data-action="close-map" aria-label="${t('trip.closeMap')}">✕</button>
           <div id="map"></div>
         </div>
       </div>
@@ -64,6 +68,16 @@ export async function renderPublicTrip(root, { tripFolderId }) {
     count === 1 ? t('trip.placesSavedOne') : t('trip.placesSavedOther', { count });
 
   const map = createMap(root.querySelector('#map'), { center: tripData.center, zoom: tripData.zoom });
+
+  const mapWrapperEl = root.querySelector('[data-role="map-wrapper"]');
+  root.querySelector('[data-action="toggle-map"]')?.addEventListener('click', () => {
+    mapWrapperEl.classList.add('map-open');
+    setTimeout(() => map.invalidateSize(), 250);
+  });
+  root.querySelector('[data-action="close-map"]')?.addEventListener('click', () => {
+    mapWrapperEl.classList.remove('map-open');
+  });
+
   const markers = new Map();
   tripData.places.forEach((place) => {
     const marker = addPlaceMarker(map, place, { onClick: () => openReadOnlyPlace(place) });

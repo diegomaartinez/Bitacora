@@ -1,4 +1,4 @@
-import { roundRect, formatShortDate, tripDateRange, drawFooterMark } from './canvasUtils.js';
+import { roundRect, formatShortDate, tripDateRange, drawFooterMark, truncateToWidth } from './canvasUtils.js';
 import { computeBounds, fitZoomAndCenter, createProjector } from './geo.js';
 import { drawBaseMap } from './tiles.js';
 import { colorHex } from '../colors.js';
@@ -237,15 +237,6 @@ async function drawMapContent(ctx, places, area) {
     ctx.textAlign = 'right';
     ctx.fillText('© Esri, © OpenStreetMap', area.x + area.width - 12, area.y + area.height - 10);
   }
-}
-
-function truncateToWidth(ctx, text, maxWidth) {
-  if (maxWidth <= 0 || ctx.measureText(text).width <= maxWidth) return text;
-  let result = text;
-  while (result.length > 1 && ctx.measureText(`${result}…`).width > maxWidth) {
-    result = result.slice(0, -1);
-  }
-  return `${result}…`;
 }
 
 export { SIZE as INSTAGRAM_SIZE };

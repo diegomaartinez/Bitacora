@@ -91,6 +91,53 @@ export function tripDateRange(places) {
   return { start: dates[0], end: dates[dates.length - 1] };
 }
 
+/** Ordena lugares cronologicamente (fecha, luego hora si la hay); sin fecha al final. */
+export function sortPlacesChronologically(places) {
+  return [...places].sort((a, b) => {
+    if (a.date !== b.date) {
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      return a.date.localeCompare(b.date);
+    }
+    if (a.time !== b.time) {
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    }
+    return 0;
+  });
+}
+
+/** Carga una imagen (p.ej. una foto de Drive ya descargada como blob URL). */
+export function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('No se pudo cargar la imagen'));
+    img.src = url;
+  });
+}
+
+/** Dibuja una imagen recortandola para llenar el area, como `background-size: cover`. */
+export function drawImageCover(ctx, img, x, y, w, h) {
+  const scale = Math.max(w / img.width, h / img.height);
+  const drawW = img.width * scale;
+  const drawH = img.height * scale;
+  const dx = x + (w - drawW) / 2;
+  const dy = y + (h - drawH) / 2;
+  ctx.drawImage(img, dx, dy, drawW, drawH);
+}
+
+/** Recorta un texto con "…" para que quepa en un ancho maximo. */
+export function truncateToWidth(ctx, text, maxWidth) {
+  if (maxWidth <= 0 || ctx.measureText(text).width <= maxWidth) return text;
+  let result = text;
+  while (result.length > 1 && ctx.measureText(`${result}…`).width > maxWidth) {
+    result = result.slice(0, -1);
+  }
+  return `${result}…`;
+}
+
 /** Firma pequena y consistente al pie de las tres imagenes de resumen. */
 export function drawFooterMark(ctx, centerX, y, { color = '#83807a' } = {}) {
   const prevAlign = ctx.textAlign;

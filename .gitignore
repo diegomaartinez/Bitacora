@@ -9,6 +9,7 @@ src/config.local.js
 .idea/
 .vscode/
 Claude outputs/
+informe-legal-bitacora.md
 
 # Nunca subir credenciales de Google descargadas desde Cloud Console.
 # Esta app solo necesita el Client ID (que va en src/config.js), nunca un

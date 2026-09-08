@@ -7,7 +7,7 @@ const WIDTH = 1500;
 const HEIGHT = 640;
 const STUB_WIDTH = 340;
 
-export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl, shareError, theme }) {
+export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl, shareError, theme, transportType }) {
   const theme_ = getTheme(theme);
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
@@ -71,7 +71,7 @@ export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl,
   ctx.fillStyle = '#17181a';
   ctx.font = '600 26px Inter';
   ctx.textAlign = 'right';
-  ctx.fillText(planeUnicode(), perforationX - 40, cursorY + 4);
+  ctx.fillText(transportUnicode(transportType), perforationX - 40, cursorY + 4);
   ctx.textAlign = 'left';
 
   cursorY += 60;
@@ -163,7 +163,9 @@ function wrapCentered(ctx, text, cx, cy, maxWidth, lineHeight) {
   lines.forEach((l, i) => ctx.fillText(l, cx, startY + i * lineHeight));
 }
 
-function planeUnicode() {
+function transportUnicode(transportType) {
+  if (transportType === 'train') return '🚆';
+  if (transportType === 'boat') return '⛴';
   return '✈';
 }
 
