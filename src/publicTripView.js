@@ -76,18 +76,40 @@ export async function renderPublicTrip(root, { tripFolderId }) {
     return `${d}/${m}/${y}`;
   }
 
+  function formatDateTime(place) {
+    const dateLabel = formatDate(place.date);
+    return place.time ? `${dateLabel} · ${place.time}` : dateLabel;
+  }
+
+  // Misma logica cronologica que la pantalla de edicion: fecha y hora
+  // primero, y si empatan se respeta el orden guardado en trip.json.
+  function comparePlaces(a, b) {
+    if (a.date !== b.date) {
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      return a.date.localeCompare(b.date);
+    }
+    if (a.time !== b.time) {
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    }
+    return 0;
+  }
+
   const listEl = root.querySelector('[data-role="place-list"]');
   if (!tripData.places.length) {
     listEl.innerHTML = `<li class="place-list-empty">${t('publicView.noPlacesYet')}</li>`;
   } else {
-    listEl.innerHTML = tripData.places
+    const sorted = [...tripData.places].sort(comparePlaces);
+    listEl.innerHTML = sorted
       .map(
         (p) => `
           <li class="place-item" data-place-id="${p.id}">
             <span class="marker-dot" style="background:${colorHex(p.color)}"></span>
             <div class="place-info">
               <h4>${escapeHtml(p.name)}</h4>
-              <span>${formatDate(p.date)}</span>
+              <span>${formatDateTime(p)}</span>
             </div>
           </li>
         `
@@ -112,7 +134,7 @@ export async function renderPublicTrip(root, { tripFolderId }) {
         <div class="modal-header">
           <div>
             <h2>${escapeHtml(place.name)}</h2>
-            <p>${formatDate(place.date)}</p>
+            <p>${formatDateTime(place)}</p>
           </div>
           <button class="btn btn-text" data-action="close">${t('gallery.close')}</button>
         </div>

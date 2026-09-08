@@ -55,6 +55,10 @@ export async function openGallery(token, place, onUpdate = () => {}) {
             <span>${t('gallery.visitDate')}</span>
             <input type="date" data-role="date-input" value="${place.date || ''}" />
           </label>
+          <label class="meta-field">
+            <span>${t('gallery.visitTime')}</span>
+            <input type="time" data-role="time-input" value="${place.time || ''}" />
+          </label>
           <div class="meta-field">
             <span>${t('gallery.markerColor')}</span>
             <div class="color-swatch-row" data-role="color-row">
@@ -132,6 +136,12 @@ export async function openGallery(token, place, onUpdate = () => {}) {
   dateInput.addEventListener('change', () => {
     place.date = dateInput.value || null;
     onUpdate({ date: place.date });
+  });
+
+  const timeInput = overlayEl.querySelector('[data-role="time-input"]');
+  timeInput.addEventListener('change', () => {
+    place.time = timeInput.value || null;
+    onUpdate({ time: place.time });
   });
 
   const colorRow = overlayEl.querySelector('[data-role="color-row"]');

@@ -58,10 +58,11 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   if (!tripData) {
     tripData = { name: t('trip.defaultName'), center: { lat: 28.29, lng: -16.63 }, zoom: 8, places: [] };
   }
-  // Compatibilidad con viajes creados antes de tener fecha/color por lugar.
+  // Compatibilidad con viajes creados antes de tener fecha/hora/color por lugar.
   tripData.places.forEach((p, i) => {
     if (!p.color) p.color = colorForIndex(i);
     if (p.date === undefined) p.date = null;
+    if (p.time === undefined) p.time = null;
     if (!Array.isArray(p.notes)) p.notes = [];
   });
 
@@ -111,28 +112,69 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
     return `${d}/${m}/${y}`;
   }
 
+  function formatDateTime(place) {
+    const dateLabel = formatDate(place.date);
+    return place.time ? `${dateLabel} · ${place.time}` : dateLabel;
+  }
+
+  // El orden de la lista es siempre cronologico (fecha, y hora si la hay).
+  // Cuando dos lugares "empatan" (misma fecha y sin hora, o misma
+  // fecha+hora) se respeta el orden manual guardado en tripData.places,
+  // que el usuario puede ajustar con las flechas solo en ese caso.
+  function comparePlaces(a, b) {
+    if (a.date !== b.date) {
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      return a.date.localeCompare(b.date);
+    }
+    if (a.time !== b.time) {
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    }
+    return 0;
+  }
+
+  function sortedPlaces() {
+    return [...tripData.places].sort(comparePlaces);
+  }
+
   function renderPlaceList() {
     const listEl = root.querySelector('[data-role="place-list"]');
     if (!tripData.places.length) {
       listEl.innerHTML = `<li class="place-list-empty">${t('trip.noPlacesYet')}</li>`;
       return;
     }
-    listEl.innerHTML = tripData.places
-      .map(
-        (p, i) => `
+    const sorted = sortedPlaces();
+    listEl.innerHTML = sorted
+      .map((p, i) => {
+        const canMoveUp = i > 0 && comparePlaces(sorted[i - 1], p) === 0;
+        const canMoveDown = i < sorted.length - 1 && comparePlaces(sorted[i + 1], p) === 0;
+        if (!canMoveUp && !canMoveDown) {
+          return `
+            <li class="place-item" data-place-id="${p.id}">
+              <span class="marker-dot" style="background:${colorHex(p.color)}"></span>
+              <div class="place-info">
+                <h4>${escapeHtml(p.name)}</h4>
+                <span>${formatDateTime(p)}</span>
+              </div>
+            </li>
+          `;
+        }
+        return `
           <li class="place-item" data-place-id="${p.id}">
             <span class="marker-dot" style="background:${colorHex(p.color)}"></span>
             <div class="place-info">
               <h4>${escapeHtml(p.name)}</h4>
-              <span>${formatDate(p.date)}</span>
+              <span>${formatDateTime(p)}</span>
             </div>
             <div class="place-reorder">
-              <button type="button" class="reorder-btn" data-action="move-up" ${i === 0 ? 'disabled' : ''} title="${t('trip.moveUp')}" aria-label="${t('trip.moveUp')}">${chevronUpIcon()}</button>
-              <button type="button" class="reorder-btn" data-action="move-down" ${i === tripData.places.length - 1 ? 'disabled' : ''} title="${t('trip.moveDown')}" aria-label="${t('trip.moveDown')}">${chevronDownIcon()}</button>
+              <button type="button" class="reorder-btn" data-action="move-up" ${canMoveUp ? '' : 'disabled'} title="${t('trip.moveUp')}" aria-label="${t('trip.moveUp')}">${chevronUpIcon()}</button>
+              <button type="button" class="reorder-btn" data-action="move-down" ${canMoveDown ? '' : 'disabled'} title="${t('trip.moveDown')}" aria-label="${t('trip.moveDown')}">${chevronDownIcon()}</button>
             </div>
           </li>
-        `
-      )
+        `;
+      })
       .join('');
     listEl.querySelectorAll('.place-item').forEach((el) => {
       el.addEventListener('click', () => {
@@ -154,11 +196,18 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   }
 
   async function movePlace(placeId, direction) {
-    const index = tripData.places.findIndex((p) => p.id === placeId);
-    const targetIndex = index + direction;
-    if (index === -1 || targetIndex < 0 || targetIndex >= tripData.places.length) return;
-    const [place] = tripData.places.splice(index, 1);
-    tripData.places.splice(targetIndex, 0, place);
+    const sorted = sortedPlaces();
+    const index = sorted.findIndex((p) => p.id === placeId);
+    const neighborIndex = index + direction;
+    if (index === -1 || neighborIndex < 0 || neighborIndex >= sorted.length) return;
+    if (comparePlaces(sorted[index], sorted[neighborIndex]) !== 0) return;
+    const realIndexA = tripData.places.findIndex((p) => p.id === sorted[index].id);
+    const realIndexB = tripData.places.findIndex((p) => p.id === sorted[neighborIndex].id);
+    if (realIndexA === -1 || realIndexB === -1) return;
+    [tripData.places[realIndexA], tripData.places[realIndexB]] = [
+      tripData.places[realIndexB],
+      tripData.places[realIndexA],
+    ];
     renderPlaceList();
     try {
       await saveTripData(token, tripFolderId, tripData);

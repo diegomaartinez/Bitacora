@@ -1125,6 +1125,7 @@ a {
 }
 
 .meta-field input[type='date'],
+.meta-field input[type='time'],
 .meta-field input[type='text'] {
   padding: 9px 12px;
   border-radius: var(--radius-sm);
