@@ -7,7 +7,7 @@ const WIDTH = 1500;
 const HEIGHT = 640;
 const STUB_WIDTH = 340;
 
-export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl, shareError, theme, transportType }) {
+export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl, shareError, theme }) {
   const theme_ = getTheme(theme);
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
@@ -26,6 +26,7 @@ export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl,
   const cardW = WIDTH - margin * 2;
   const cardH = HEIGHT - margin * 2;
   const perforationX = cardX + cardW - STUB_WIDTH;
+  const padX = 56;
 
   ctx.save();
   ctx.shadowColor = 'rgba(23,24,26,0.14)';
@@ -60,19 +61,12 @@ export async function drawBoardingPass(ctx, { tripData, passengerName, shareUrl,
   ctx.restore();
 
   // ------------------------- Cuerpo principal -------------------------
-  const padX = 56;
   let cursorY = cardY + 66;
 
   ctx.textAlign = 'left';
   ctx.fillStyle = theme_.eyebrow;
   ctx.font = '700 20px Inter';
   drawTracked(ctx, t('summary.boarding.headerTag'), cardX + padX, cursorY, 2.5);
-
-  ctx.fillStyle = '#17181a';
-  ctx.font = '600 26px Inter';
-  ctx.textAlign = 'right';
-  ctx.fillText(transportUnicode(transportType), perforationX - 40, cursorY + 4);
-  ctx.textAlign = 'left';
 
   cursorY += 60;
   labelValue(ctx, cardX + padX, cursorY, t('summary.boarding.passenger'), (passengerName || t('summary.boarding.defaultPassenger')).toUpperCase());
@@ -161,12 +155,6 @@ function wrapCentered(ctx, text, cx, cy, maxWidth, lineHeight) {
   if (line) lines.push(line);
   const startY = cy - ((lines.length - 1) * lineHeight) / 2;
   lines.forEach((l, i) => ctx.fillText(l, cx, startY + i * lineHeight));
-}
-
-function transportUnicode(transportType) {
-  if (transportType === 'train') return '🚆';
-  if (transportType === 'boat') return '⛴';
-  return '✈';
 }
 
 function shortName(name) {

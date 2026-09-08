@@ -8,11 +8,6 @@ import { SUMMARY_THEMES, DEFAULT_THEME_KEY } from './themes.js';
 import { t } from '../i18n.js';
 
 const MAX_COVER_PLACES = 8;
-const TRANSPORT_TYPES = [
-  { key: 'plane', icon: '✈', labelKey: 'summaryModal.transportPlane' },
-  { key: 'train', icon: '🚆', labelKey: 'summaryModal.transportTrain' },
-  { key: 'boat', icon: '⛴', labelKey: 'summaryModal.transportBoat' },
-];
 
 function getTabs() {
   return [
@@ -47,7 +42,6 @@ export function openSummaryModal({ tripData, profile, token, tripFolderId }) {
   let renderToken = 0;
   let themeKey = DEFAULT_THEME_KEY;
   let passengerName = profile?.name || '';
-  let transportType = 'plane';
 
   // Estado de la pestana "Portada" (foto de fondo + lugares elegidos).
   let coverPhotos = null; // null = aun no cargadas
@@ -153,40 +147,6 @@ export function openSummaryModal({ tripData, profile, token, tripFolderId }) {
     });
   }
 
-  function transportRowHtml() {
-    return `
-      <div class="meta-field">
-        <span>${t('summaryModal.transportType')}</span>
-        <div class="transport-type-row" data-role="transport-row">
-          ${TRANSPORT_TYPES.map(
-            (tt) => `
-              <button
-                type="button"
-                class="transport-type-btn ${tt.key === transportType ? 'selected' : ''}"
-                data-transport="${tt.key}"
-                title="${t(tt.labelKey)}"
-                aria-label="${t(tt.labelKey)}"
-              >${tt.icon}</button>
-            `
-          ).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  function bindTransportRow() {
-    const row = controls.querySelector('[data-role="transport-row"]');
-    if (!row) return;
-    row.addEventListener('click', (e) => {
-      const btn = e.target.closest('.transport-type-btn');
-      if (!btn) return;
-      transportType = btn.dataset.transport;
-      row.querySelectorAll('.transport-type-btn').forEach((el) => el.classList.remove('selected'));
-      btn.classList.add('selected');
-      redraw();
-    });
-  }
-
   function renderControls() {
     if (activeTab === 'instagram') {
       controls.innerHTML = `
@@ -207,14 +167,12 @@ export function openSummaryModal({ tripData, profile, token, tripFolderId }) {
           <span>${t('summaryModal.passengerName')}</span>
           <input type="text" data-role="passenger-input" value="${escapeAttr(passengerName)}" maxlength="40" />
         </label>
-        ${transportRowHtml()}
         ${themeRowHtml()}
       `;
       controls.querySelector('[data-role="passenger-input"]').addEventListener('input', (e) => {
         passengerName = e.target.value;
         redraw();
       });
-      bindTransportRow();
       bindThemeRow();
     } else if (activeTab === 'cover') {
       renderCoverControls();
@@ -382,7 +340,7 @@ export function openSummaryModal({ tripData, profile, token, tripFolderId }) {
     } else if (activeTab === 'boarding') {
       canvas.width = BOARDING_PASS_WIDTH;
       canvas.height = BOARDING_PASS_HEIGHT;
-      await drawBoardingPass(ctx, { tripData, passengerName, shareUrl, shareError, theme: themeKey, transportType });
+      await drawBoardingPass(ctx, { tripData, passengerName, shareUrl, shareError, theme: themeKey });
       if (myToken === renderToken) requestShareLink();
     } else if (activeTab === 'cover') {
       canvas.width = COVER_WIDTH;
