@@ -3,6 +3,7 @@ import { signOut } from './auth.js';
 import { renderLogin } from './views/login.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderTrip } from './views/trip.js';
+import { renderPublicTrip } from './publicTripView.js';
 import { state } from './state.js';
 
 const root = document.getElementById('app');
@@ -47,7 +48,17 @@ function handleSignOut() {
   showLogin();
 }
 
+function showPublicTrip(tripFolderId) {
+  currentRender = () => showPublicTrip(tripFolderId);
+  renderPublicTrip(root, { tripFolderId });
+}
+
 window.addEventListener('td:signout', handleSignOut);
 window.addEventListener('td:langchange', () => currentRender());
 
-showLogin();
+const sharedTripId = new URLSearchParams(window.location.search).get('share');
+if (sharedTripId) {
+  showPublicTrip(sharedTripId);
+} else {
+  showLogin();
+}

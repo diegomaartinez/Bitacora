@@ -109,6 +109,7 @@ export const STRINGS = {
     // --- Gallery (place photos modal) ---
     'gallery.savedInDrive': 'Fotos guardadas en tu Google Drive',
     'gallery.close': 'Cerrar',
+    'gallery.placeName': 'Nombre del lugar',
     'gallery.visitDate': 'Fecha de la visita',
     'gallery.markerColor': 'Color del marcador',
     'gallery.detailsTitle': 'Detalles del lugar',
@@ -187,6 +188,13 @@ export const STRINGS = {
     'summary.metro.stationsOne': '1 estación visitada',
     'summary.metro.stationsOther': '{{count}} estaciones visitadas',
     'summary.metro.addPlacesHint': 'Añade lugares al viaje para generar la línea',
+
+    // --- Public (read-only shared) trip view ---
+    'publicView.readOnlyTag': 'Vista de solo lectura',
+    'publicView.createOwn': 'Crea tu propio viaje',
+    'publicView.loadError': 'No se pudo cargar este viaje. El enlace puede haber caducado o dejado de compartirse.',
+    'publicView.notFound': 'No se ha encontrado este viaje.',
+    'publicView.noPlacesYet': 'Todavía no hay lugares en este viaje.',
   },
   en: {
     // --- Generic ---
@@ -289,6 +297,7 @@ export const STRINGS = {
     // --- Gallery (place photos modal) ---
     'gallery.savedInDrive': 'Photos saved to your Google Drive',
     'gallery.close': 'Close',
+    'gallery.placeName': 'Place name',
     'gallery.visitDate': 'Visit date',
     'gallery.markerColor': 'Marker color',
     'gallery.detailsTitle': 'Place details',
@@ -367,6 +376,13 @@ export const STRINGS = {
     'summary.metro.stationsOne': '1 station visited',
     'summary.metro.stationsOther': '{{count}} stations visited',
     'summary.metro.addPlacesHint': 'Add places to the trip to generate the line',
+
+    // --- Public (read-only shared) trip view ---
+    'publicView.readOnlyTag': 'Read-only view',
+    'publicView.createOwn': 'Create your own trip',
+    'publicView.loadError': 'This trip could not be loaded. The link may have expired or is no longer shared.',
+    'publicView.notFound': 'This trip could not be found.',
+    'publicView.noPlacesYet': 'There are no places in this trip yet.',
   },
 };
 

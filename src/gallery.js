@@ -37,7 +37,14 @@ export async function openGallery(token, place, onUpdate = () => {}) {
     <div class="modal-panel">
       <div class="modal-header">
         <div>
-          <h2>${escapeHtml(place.name)}</h2>
+          <input
+            type="text"
+            class="place-name-input"
+            data-role="name-input"
+            value="${escapeHtml(place.name)}"
+            maxlength="120"
+            aria-label="${t('gallery.placeName')}"
+          />
           <p>${t('gallery.savedInDrive')}</p>
         </div>
         <button class="btn btn-text" data-action="close">${t('gallery.close')}</button>
@@ -103,6 +110,21 @@ export async function openGallery(token, place, onUpdate = () => {}) {
 
   overlayEl.addEventListener('click', (e) => {
     if (e.target === overlayEl || e.target.dataset.action === 'close') closeModal();
+  });
+
+  // ------------------------------- Nombre -------------------------------
+  const nameInput = overlayEl.querySelector('[data-role="name-input"]');
+  nameInput.addEventListener('change', () => {
+    const newName = nameInput.value.trim();
+    if (!newName || newName === place.name) {
+      nameInput.value = place.name;
+      return;
+    }
+    place.name = newName;
+    onUpdate({ name: place.name });
+  });
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') nameInput.blur();
   });
 
   // --------------------------- Fecha y color ---------------------------

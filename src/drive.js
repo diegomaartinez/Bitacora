@@ -1,10 +1,66 @@
-import { DRIVE_ROOT_FOLDER_NAME } from './config.js';
+import { DRIVE_ROOT_FOLDER_NAME, GOOGLE_API_KEY } from './config.js';
 
 const API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
 const blobUrlCache = new Map();
+const publicBlobUrlCache = new Map();
+
+// ---------------------------------------------------------------------------
+// Lectura PUBLICA (sin iniciar sesion), usada por la pagina de solo-lectura
+// que ve quien recibe un enlace/QR de un viaje compartido. En vez de un
+// token de acceso de una cuenta de Google, usa una clave de API restringida
+// a la Google Drive API (ver GOOGLE_API_KEY en config.js) -- funciona solo
+// con archivos que ya son publicos ("cualquiera con el enlace"), nunca da
+// acceso al resto del Drive de nadie.
+// ---------------------------------------------------------------------------
+
+function isPublicReadConfigured() {
+  return Boolean(GOOGLE_API_KEY) && !GOOGLE_API_KEY.includes('TU_API_KEY');
+}
+
+async function publicDriveFetch(url) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Drive API ${res.status}: ${body || res.statusText}`);
+  }
+  return res;
+}
+
+/** Lee el trip.json publico de un viaje compartido (sin token de usuario). */
+export async function getPublicTripData(tripFolderId) {
+  if (!isPublicReadConfigured()) throw new Error('GOOGLE_API_KEY no configurada');
+  const q = encodeURIComponent(`'${tripFolderId}' in parents and name='trip.json' and trashed=false`);
+  const listRes = await publicDriveFetch(`${API}/files?q=${q}&fields=files(id)&key=${GOOGLE_API_KEY}`);
+  const listData = await listRes.json();
+  const fileId = listData.files && listData.files.length > 0 ? listData.files[0].id : null;
+  if (!fileId) return null;
+  const res = await publicDriveFetch(`${API}/files/${fileId}?alt=media&key=${GOOGLE_API_KEY}`);
+  return res.json();
+}
+
+/** Lista las fotos publicas de un lugar (sin token de usuario). */
+export async function listPublicPhotos(placeFolderId) {
+  if (!isPublicReadConfigured()) return [];
+  const q = encodeURIComponent(`'${placeFolderId}' in parents and trashed=false and mimeType contains 'image/'`);
+  const res = await publicDriveFetch(
+    `${API}/files?q=${q}&fields=files(id,name)&orderBy=createdTime desc&key=${GOOGLE_API_KEY}`
+  );
+  const data = await res.json();
+  return data.files || [];
+}
+
+/** Descarga una foto publica y devuelve una object URL (con cache en memoria). */
+export async function getPublicPhotoBlobUrl(fileId) {
+  if (publicBlobUrlCache.has(fileId)) return publicBlobUrlCache.get(fileId);
+  const res = await publicDriveFetch(`${API}/files/${fileId}?alt=media&key=${GOOGLE_API_KEY}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  publicBlobUrlCache.set(fileId, url);
+  return url;
+}
 
 function authHeaders(token, extra = {}) {
   return { Authorization: `Bearer ${token}`, ...extra };
@@ -139,6 +195,17 @@ export async function saveTripData(token, tripFolderId, data) {
   });
 }
 
+/** Cambia el nombre de una carpeta cualquiera en Drive (usado para renombrar lugares). */
+export async function renameDriveFolder(token, folderId, newName) {
+  const cleanName = (newName || '').trim();
+  if (!cleanName) return;
+  await driveFetch(token, `${API}/files/${folderId}?fields=id`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: cleanName }),
+  });
+}
+
 /** Cambia el nombre de la carpeta del viaje y mantiene sincronizado trip.json. */
 export async function renameTrip(token, tripFolderId, newName) {
   const cleanName = (newName || '').trim();
@@ -260,12 +327,16 @@ export async function deletePhoto(token, fileId) {
 
 /**
  * Convierte la carpeta de un viaje en "cualquiera con el enlace puede ver"
- * (solo lectura) y devuelve el enlace publico a esa carpeta.
+ * (solo lectura) y devuelve un enlace a la propia web de Bitácora que
+ * muestra ese viaje (mapa, lugares y fotos), en modo solo-lectura -- NO un
+ * enlace a la carpeta de Google Drive.
  *
  * Importante: esto solo afecta a la carpeta de ESTE viaje (y a lo que
  * contiene: sus lugares y fotos). No concede acceso ni al resto del Drive
  * del usuario ni a otros viajes, y el rol "reader" impide que quien reciba
- * el enlace pueda editar o borrar nada.
+ * el enlace pueda editar o borrar nada. La pagina de solo-lectura lee estos
+ * mismos datos publicos usando una clave de API de Google (sin iniciar
+ * sesion), ver src/publicTripView.js.
  */
 export async function ensureTripShareLink(token, tripFolderId) {
   const res = await driveFetch(
@@ -283,7 +354,7 @@ export async function ensureTripShareLink(token, tripFolderId) {
       body: JSON.stringify({ type: 'anyone', role: 'reader', allowFileDiscovery: false }),
     });
   }
-  return `https://drive.google.com/drive/folders/${tripFolderId}`;
+  return `${window.location.origin}${window.location.pathname}?share=${tripFolderId}`;
 }
 
 /** Revoca el acceso publico ("cualquiera con el enlace") a la carpeta de un viaje. */

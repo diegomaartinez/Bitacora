@@ -1,4 +1,4 @@
-import { getTripData, saveTripData, ensurePlaceFolder } from '../drive.js';
+import { getTripData, saveTripData, ensurePlaceFolder, renameDriveFolder } from '../drive.js';
 import { searchPlace, reverseGeocode } from '../geocode.js';
 import { createMap, addPlaceMarker, updateMarkerAppearance, flyTo } from '../map.js';
 import { openGallery } from '../gallery.js';
@@ -177,6 +177,12 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
         await saveTripData(token, tripFolderId, tripData);
       } catch (err) {
         showToast(t('trip.saveChangeError'), { error: true });
+      }
+      if (patch.name) {
+        // Mantiene el nombre de la carpeta de Drive sincronizado con el
+        // nombre mostrado. Si falla (p.ej. sin conexion puntual) no bloquea
+        // el resto del flujo: el nombre ya quedo guardado en trip.json.
+        renameDriveFolder(token, place.id, patch.name).catch(() => {});
       }
     });
   }
