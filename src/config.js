@@ -6,7 +6,7 @@
 // Instrucciones completas paso a paso en README.md.
 // ---------------------------------------------------------------------------
 
-export const GOOGLE_CLIENT_ID = 'TU_CLIENT_ID.apps.googleusercontent.com';
+export const GOOGLE_CLIENT_ID = '235727397064-2accjaa68tcpvlfi9v3v4k47p7ncegf2.apps.googleusercontent.com';
 
 // Alcance minimo necesario: permite a la app crear, leer y listar
 // unicamente los archivos y carpetas que ella misma crea en el Drive
