@@ -1,15 +1,28 @@
-import { renameTrip, deleteTrip, ensureTripShareLink, revokeTripShareLink } from './drive.js';
+import {
+  renameTrip,
+  deleteTrip,
+  ensureTripShareLink,
+  revokeTripShareLink,
+  tripInviteLink,
+  addCollaborator,
+  updateCollaboratorRole,
+  removeCollaborator,
+} from './drive.js';
 import { showToast } from './toast.js';
 import { t } from './i18n.js';
 
 let overlayEl = null;
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /**
  * Modal de ajustes de un viaje: cambiar el nombre, compartir/dejar de
- * compartir por enlace, y eliminar el viaje (se mueve a la papelera de
- * Google Drive, junto con sus lugares y fotos).
+ * compartir por enlace, gestionar quien tiene acceso al viaje (amigos y
+ * familia invitados por email, con permiso de ver o de editar), y eliminar
+ * el viaje (se mueve a la papelera de Google Drive, junto con sus lugares
+ * y fotos).
  */
-export function openTripSettings({ token, tripData, tripFolderId, onRenamed, onDeleted }) {
+export function openTripSettings({ token, tripData, tripFolderId, profile, isOwner = true, onRenamed, onDeleted }) {
   if (overlayEl) overlayEl.remove();
 
   overlayEl = document.createElement('div');
@@ -40,6 +53,29 @@ export function openTripSettings({ token, tripData, tripFolderId, onRenamed, onD
             <button class="btn btn-secondary btn-small" data-action="share-generate">${t('tripSettings.shareGenerate')}</button>
             <button class="btn btn-text btn-small" data-action="share-revoke">${t('tripSettings.shareRevoke')}</button>
           </div>
+        </section>
+
+        <section class="settings-section">
+          <span class="section-label">${t('tripSettings.collabTitle')}</span>
+          <p class="section-hint">${t('tripSettings.collabHint')}</p>
+          ${
+            isOwner
+              ? `
+                <div class="settings-collab-form" data-role="collab-form">
+                  <input type="email" class="prompt-input" data-role="collab-email" placeholder="${t('tripSettings.collabEmailPlaceholder')}" maxlength="120" />
+                  <select data-role="collab-role" class="collab-role-select">
+                    <option value="viewer">${t('tripSettings.collabRoleViewer')}</option>
+                    <option value="editor">${t('tripSettings.collabRoleEditor')}</option>
+                  </select>
+                  <button type="button" class="btn btn-secondary btn-small" data-action="collab-invite">${t('tripSettings.collabInvite')}</button>
+                </div>
+                <div class="settings-actions-row">
+                  <button type="button" class="btn btn-text btn-small" data-action="collab-copy-link">${t('tripSettings.collabCopyLink')}</button>
+                </div>
+              `
+              : `<p class="section-hint">${t('tripSettings.collabOnlyOwner')}</p>`
+          }
+          <ul class="collab-members-list" data-role="collab-members"></ul>
         </section>
 
         <section class="settings-section settings-danger">
@@ -109,6 +145,115 @@ export function openTripSettings({ token, tripData, tripFolderId, onRenamed, onD
       btn.disabled = false;
     }
   });
+
+  // ------------------------- Amigos y familia -------------------------
+  const membersList = overlayEl.querySelector('[data-role="collab-members"]');
+  const myEmail = (profile?.email || '').toLowerCase();
+
+  function renderMembers() {
+    const rows = [];
+    if (tripData.ownerEmail) {
+      const youTag = tripData.ownerEmail.toLowerCase() === myEmail ? ` ${t('tripSettings.collabYouTag')}` : '';
+      rows.push(`
+        <li class="collab-member-item">
+          <span class="collab-member-email">${escapeAttr(tripData.ownerName || tripData.ownerEmail)}${youTag}</span>
+          <span class="collab-role-tag collab-role-owner">${t('tripSettings.collabOwnerTag')}</span>
+        </li>
+      `);
+    }
+    (tripData.collaborators || []).forEach((c) => {
+      const youTag = c.email.toLowerCase() === myEmail ? ` ${t('tripSettings.collabYouTag')}` : '';
+      if (isOwner) {
+        rows.push(`
+          <li class="collab-member-item" data-email="${escapeAttr(c.email)}">
+            <span class="collab-member-email">${escapeAttr(c.email)}${youTag}</span>
+            <select class="collab-role-select collab-role-select-small" data-role="member-role-select" data-email="${escapeAttr(c.email)}">
+              <option value="viewer" ${c.role === 'viewer' ? 'selected' : ''}>${t('tripSettings.collabRoleViewer')}</option>
+              <option value="editor" ${c.role === 'editor' ? 'selected' : ''}>${t('tripSettings.collabRoleEditor')}</option>
+            </select>
+            <button type="button" class="btn btn-text btn-small" data-action="member-remove" data-email="${escapeAttr(c.email)}">${t('tripSettings.collabRemove')}</button>
+          </li>
+        `);
+      } else {
+        const roleLabel = c.role === 'editor' ? t('tripSettings.collabRoleEditor') : t('tripSettings.collabRoleViewer');
+        rows.push(`
+          <li class="collab-member-item">
+            <span class="collab-member-email">${escapeAttr(c.email)}${youTag}</span>
+            <span class="collab-role-tag">${roleLabel}</span>
+          </li>
+        `);
+      }
+    });
+    membersList.innerHTML = rows.join('');
+
+    membersList.querySelectorAll('[data-role="member-role-select"]').forEach((select) => {
+      select.addEventListener('change', async () => {
+        const email = select.dataset.email;
+        const newRole = select.value;
+        select.disabled = true;
+        try {
+          await updateCollaboratorRole(token, tripFolderId, tripData, email, newRole);
+          showToast(t('tripSettings.collabRoleUpdated'));
+        } catch (err) {
+          showToast(t('tripSettings.collabRoleUpdateError'), { error: true });
+          renderMembers();
+        } finally {
+          select.disabled = false;
+        }
+      });
+    });
+
+    membersList.querySelectorAll('[data-action="member-remove"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const email = btn.dataset.email;
+        if (!window.confirm(t('tripSettings.collabRemoveConfirm', { email }))) return;
+        btn.disabled = true;
+        try {
+          await removeCollaborator(token, tripFolderId, tripData, email);
+          showToast(t('tripSettings.collabRemoveSuccess'));
+          renderMembers();
+        } catch (err) {
+          showToast(t('tripSettings.collabRemoveError'), { error: true });
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  renderMembers();
+
+  if (isOwner) {
+    const collabEmailInput = overlayEl.querySelector('[data-role="collab-email"]');
+    const collabRoleSelect = overlayEl.querySelector('[data-role="collab-role"]');
+    overlayEl.querySelector('[data-action="collab-invite"]').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const email = collabEmailInput.value.trim();
+      if (!EMAIL_RE.test(email)) {
+        showToast(t('tripSettings.collabInviteInvalidEmail'), { error: true });
+        return;
+      }
+      if (email.toLowerCase() === myEmail) {
+        showToast(t('tripSettings.collabInviteInvalidEmail'), { error: true });
+        return;
+      }
+      btn.disabled = true;
+      try {
+        await addCollaborator(token, tripFolderId, tripData, email, collabRoleSelect.value);
+        collabEmailInput.value = '';
+        showToast(t('tripSettings.collabInviteSuccess'));
+        renderMembers();
+      } catch (err) {
+        showToast(t('tripSettings.collabInviteError'), { error: true });
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    overlayEl.querySelector('[data-action="collab-copy-link"]').addEventListener('click', async () => {
+      await copyToClipboard(tripInviteLink(tripFolderId));
+      showToast(t('tripSettings.collabLinkCopied'));
+    });
+  }
 
   const dangerActions = overlayEl.querySelector('[data-role="danger-actions"]');
 

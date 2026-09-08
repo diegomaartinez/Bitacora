@@ -67,6 +67,14 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
     if (p.time === undefined) p.time = null;
     if (!Array.isArray(p.notes)) p.notes = [];
   });
+  // Compatibilidad con viajes creados antes de tener anfitrion/colaboradores.
+  // Si el viaje no tiene anfitrion guardado, asumimos que quien lo abre
+  // ahora (normalmente su creador original) lo es.
+  if (!tripData.ownerEmail) tripData.ownerEmail = profile?.email || null;
+  if (!tripData.ownerName) tripData.ownerName = profile?.name || null;
+  if (!Array.isArray(tripData.collaborators)) tripData.collaborators = [];
+
+  const isOwner = !tripData.ownerEmail || tripData.ownerEmail.toLowerCase() === (profile?.email || '').toLowerCase();
 
   function renderTripTopbar() {
     renderTopbar(root.querySelector('[data-role="topbar"]'), {
@@ -79,6 +87,8 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
           token,
           tripData,
           tripFolderId,
+          profile,
+          isOwner,
           onRenamed: (name) => {
             root.querySelector('[data-role="trip-title"]').textContent = name;
             renderTripTopbar();

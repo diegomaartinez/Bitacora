@@ -47,7 +47,7 @@ export async function renderDashboard(root, { token, profile, onOpenTrip, onSign
   await reload();
 
   root.querySelector('[data-action="open-new-trip"]').addEventListener('click', () => {
-    openNewTripModal(token, async (folderId) => {
+    openNewTripModal(token, profile, async (folderId) => {
       onOpenTrip(folderId);
     });
   });
@@ -200,7 +200,7 @@ function renderCoverMap(container, tripData) {
   requestAnimationFrame(() => map.invalidateSize());
 }
 
-function openNewTripModal(token, onCreated) {
+function openNewTripModal(token, profile, onCreated) {
   if (modalOverlayEl) modalOverlayEl.remove();
 
   modalOverlayEl = document.createElement('div');
@@ -260,6 +260,8 @@ function openNewTripModal(token, onCreated) {
               lat: result.lat,
               lng: result.lng,
               zoom,
+              ownerEmail: profile?.email || null,
+              ownerName: profile?.name || null,
             });
             close();
             onCreated(folderId);

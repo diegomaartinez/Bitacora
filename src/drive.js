@@ -168,6 +168,12 @@ export async function createTrip(token, rootFolderId, tripInfo) {
     zoom: tripInfo.zoom || 8,
     places: [],
     createdAt: new Date().toISOString(),
+    // Quien crea el viaje es su "anfitrion": es la unica persona que puede
+    // invitar o quitar acceso a otras cuentas (ver mas abajo, seccion
+    // "Viajes compartidos").
+    ownerEmail: tripInfo.ownerEmail || null,
+    ownerName: tripInfo.ownerName || null,
+    collaborators: [],
   };
   await uploadJsonFile(token, 'trip.json', folderId, data);
   return { folderId, data };
@@ -370,4 +376,99 @@ export async function revokeTripShareLink(token, tripFolderId) {
       driveFetch(token, `${API}/files/${tripFolderId}/permissions/${p.id}`, { method: 'DELETE' })
     )
   );
+}
+
+// ---------------------------------------------------------------------------
+// Viajes compartidos: el anfitrion (quien creo el viaje) puede invitar a
+// amigos o familiares concretos, por su email, con permiso de solo ver o
+// de editar. A diferencia del enlace publico de arriba (que da acceso de
+// solo lectura a "cualquiera con el enlace"), aqui compartimos la carpeta
+// de Drive con la cuenta de Google de esa persona en concreto
+// (permissions type "user"), y guardamos la lista de quien tiene acceso
+// (y con que rol) dentro de trip.json para poder mostrarla en la app.
+// ---------------------------------------------------------------------------
+
+const APP_ROLE_TO_DRIVE_ROLE = { editor: 'writer', viewer: 'reader' };
+
+export function tripInviteLink(tripFolderId) {
+  return `${window.location.origin}${window.location.pathname}?invite=${tripFolderId}`;
+}
+
+/** Lista los permisos de Drive de una carpeta (para encontrar el de un email concreto). */
+async function listFolderPermissions(token, folderId) {
+  const res = await driveFetch(
+    token,
+    `${API}/files/${folderId}/permissions?fields=permissions(id,type,role,emailAddress)`
+  );
+  const data = await res.json();
+  return data.permissions || [];
+}
+
+/** Comparte una carpeta de Drive con la cuenta de Google de un email concreto. */
+async function shareFolderWithUser(token, folderId, email, driveRole) {
+  await driveFetch(token, `${API}/files/${folderId}/permissions?sendNotificationEmail=false&fields=id`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'user', role: driveRole, emailAddress: email }),
+  });
+}
+
+/** Cambia el rol de Drive (lector/editor) que ya tiene un email concreto sobre una carpeta. */
+async function updateFolderUserRole(token, folderId, email, driveRole) {
+  const perms = await listFolderPermissions(token, folderId);
+  const match = perms.find((p) => p.type === 'user' && p.emailAddress?.toLowerCase() === email);
+  if (!match) {
+    await shareFolderWithUser(token, folderId, email, driveRole);
+    return;
+  }
+  await driveFetch(token, `${API}/files/${folderId}/permissions/${match.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: driveRole }),
+  });
+}
+
+/** Quita el acceso de Drive de un email concreto sobre una carpeta. */
+async function unshareFolderFromUser(token, folderId, email) {
+  const perms = await listFolderPermissions(token, folderId);
+  const match = perms.find((p) => p.type === 'user' && p.emailAddress?.toLowerCase() === email);
+  if (!match) return;
+  await driveFetch(token, `${API}/files/${folderId}/permissions/${match.id}`, { method: 'DELETE' });
+}
+
+/**
+ * Invita a una persona a un viaje: comparte la carpeta de Drive con su
+ * email (con permiso de lector o editor) y la anade (o actualiza su rol,
+ * si ya estaba) en la lista de colaboradores de trip.json.
+ */
+export async function addCollaborator(token, tripFolderId, tripData, email, role) {
+  const cleanEmail = email.trim().toLowerCase();
+  const driveRole = APP_ROLE_TO_DRIVE_ROLE[role] || 'reader';
+  await shareFolderWithUser(token, tripFolderId, cleanEmail, driveRole);
+  if (!Array.isArray(tripData.collaborators)) tripData.collaborators = [];
+  const existing = tripData.collaborators.find((c) => c.email.toLowerCase() === cleanEmail);
+  if (existing) {
+    existing.role = role;
+  } else {
+    tripData.collaborators.push({ email: cleanEmail, role, addedAt: new Date().toISOString() });
+  }
+  await saveTripData(token, tripFolderId, tripData);
+}
+
+/** Cambia el rol (lector/editor) de alguien que ya tiene acceso a un viaje. */
+export async function updateCollaboratorRole(token, tripFolderId, tripData, email, role) {
+  const cleanEmail = email.trim().toLowerCase();
+  const driveRole = APP_ROLE_TO_DRIVE_ROLE[role] || 'reader';
+  await updateFolderUserRole(token, tripFolderId, cleanEmail, driveRole);
+  const existing = (tripData.collaborators || []).find((c) => c.email.toLowerCase() === cleanEmail);
+  if (existing) existing.role = role;
+  await saveTripData(token, tripFolderId, tripData);
+}
+
+/** Quita a alguien de un viaje: revoca su acceso en Drive y lo quita de trip.json. */
+export async function removeCollaborator(token, tripFolderId, tripData, email) {
+  const cleanEmail = email.trim().toLowerCase();
+  await unshareFolderFromUser(token, tripFolderId, cleanEmail);
+  tripData.collaborators = (tripData.collaborators || []).filter((c) => c.email.toLowerCase() !== cleanEmail);
+  await saveTripData(token, tripFolderId, tripData);
 }

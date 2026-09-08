@@ -4,6 +4,7 @@ import { renderLogin } from './views/login.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderTrip } from './views/trip.js';
 import { renderPublicTrip } from './publicTripView.js';
+import { renderInvite } from './invite.js';
 import { state } from './state.js';
 
 const root = document.getElementById('app');
@@ -53,11 +54,29 @@ function showPublicTrip(tripFolderId) {
   renderPublicTrip(root, { tripFolderId });
 }
 
+function showInvite(tripFolderId) {
+  currentRender = () => showInvite(tripFolderId);
+  renderInvite(root, {
+    tripFolderId,
+    session,
+    onSignIn: (token, profile) => {
+      session = { token, profile };
+    },
+    onEnterViewer: () => showPublicTrip(tripFolderId),
+    onEnterEditor: () => showTrip(tripFolderId),
+    onGoToDashboard: () => (session ? showDashboard() : showLogin()),
+  });
+}
+
 window.addEventListener('td:signout', handleSignOut);
 window.addEventListener('td:langchange', () => currentRender());
 
-const sharedTripId = new URLSearchParams(window.location.search).get('share');
-if (sharedTripId) {
+const params = new URLSearchParams(window.location.search);
+const sharedTripId = params.get('share');
+const inviteTripId = params.get('invite');
+if (inviteTripId) {
+  showInvite(inviteTripId);
+} else if (sharedTripId) {
   showPublicTrip(sharedTripId);
 } else {
   showLogin();
