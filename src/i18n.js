@@ -72,8 +72,6 @@ export const STRINGS = {
     'trip.namePromptTitle': 'Nombre de este lugar',
     'trip.namePromptDescription': 'Se añadirá como un lugar nuevo en tu viaje.',
     'trip.namePromptConfirm': 'Añadir lugar',
-    'trip.moveUp': 'Subir',
-    'trip.moveDown': 'Bajar',
 
     // --- Trip settings modal ---
     'tripSettings.title': 'Ajustes del viaje',
@@ -167,10 +165,6 @@ export const STRINGS = {
     'summaryModal.passengerName': 'Nombre del pasajero',
     'summaryModal.colorStyle': 'Estilo de color',
     'summaryModal.download': 'Descargar imagen',
-    'summaryModal.transportType': 'Tipo de billete',
-    'summaryModal.transportPlane': 'Avión',
-    'summaryModal.transportTrain': 'Tren',
-    'summaryModal.transportBoat': 'Barco',
     'summaryModal.coverPhoto': 'Foto de fondo',
     'summaryModal.coverPlaces': 'Lugares mostrados (máx. {{max}})',
     'summaryModal.coverLoadingPhotos': 'Cargando tus fotos...',
@@ -277,8 +271,6 @@ export const STRINGS = {
     'trip.namePromptTitle': 'Name this place',
     'trip.namePromptDescription': 'It will be added as a new place in your trip.',
     'trip.namePromptConfirm': 'Add place',
-    'trip.moveUp': 'Move up',
-    'trip.moveDown': 'Move down',
 
     // --- Trip settings modal ---
     'tripSettings.title': 'Trip settings',
@@ -372,10 +364,6 @@ export const STRINGS = {
     'summaryModal.passengerName': 'Passenger name',
     'summaryModal.colorStyle': 'Color style',
     'summaryModal.download': 'Download image',
-    'summaryModal.transportType': 'Ticket type',
-    'summaryModal.transportPlane': 'Plane',
-    'summaryModal.transportTrain': 'Train',
-    'summaryModal.transportBoat': 'Boat',
     'summaryModal.coverPhoto': 'Background photo',
     'summaryModal.coverPlaces': 'Places shown (max {{max}})',
     'summaryModal.coverLoadingPhotos': 'Loading your photos...',

@@ -131,9 +131,8 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   }
 
   // El orden de la lista es siempre cronologico (fecha, y hora si la hay).
-  // Cuando dos lugares "empatan" (misma fecha y sin hora, o misma
-  // fecha+hora) se respeta el orden manual guardado en tripData.places,
-  // que el usuario puede ajustar con las flechas solo en ese caso.
+  // Si el usuario quiere mas control sobre el orden entre lugares con la
+  // misma fecha, puede anadir la hora de la visita en cada uno.
   function comparePlaces(a, b) {
     if (a.date !== b.date) {
       if (!a.date) return 1;
@@ -160,34 +159,17 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
     }
     const sorted = sortedPlaces();
     listEl.innerHTML = sorted
-      .map((p, i) => {
-        const canMoveUp = i > 0 && comparePlaces(sorted[i - 1], p) === 0;
-        const canMoveDown = i < sorted.length - 1 && comparePlaces(sorted[i + 1], p) === 0;
-        if (!canMoveUp && !canMoveDown) {
-          return `
-            <li class="place-item" data-place-id="${p.id}">
-              <span class="marker-dot" style="background:${colorHex(p.color)}"></span>
-              <div class="place-info">
-                <h4>${escapeHtml(p.name)}</h4>
-                <span>${formatDateTime(p)}</span>
-              </div>
-            </li>
-          `;
-        }
-        return `
+      .map(
+        (p) => `
           <li class="place-item" data-place-id="${p.id}">
             <span class="marker-dot" style="background:${colorHex(p.color)}"></span>
             <div class="place-info">
               <h4>${escapeHtml(p.name)}</h4>
               <span>${formatDateTime(p)}</span>
             </div>
-            <div class="place-reorder">
-              <button type="button" class="reorder-btn" data-action="move-up" ${canMoveUp ? '' : 'disabled'} title="${t('trip.moveUp')}" aria-label="${t('trip.moveUp')}">${chevronUpIcon()}</button>
-              <button type="button" class="reorder-btn" data-action="move-down" ${canMoveDown ? '' : 'disabled'} title="${t('trip.moveDown')}" aria-label="${t('trip.moveDown')}">${chevronDownIcon()}</button>
-            </div>
           </li>
-        `;
-      })
+        `
+      )
       .join('');
     listEl.querySelectorAll('.place-item').forEach((el) => {
       el.addEventListener('click', () => {
@@ -197,36 +179,7 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
           openPlaceGallery(place);
         }
       });
-      el.querySelector('[data-action="move-up"]')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        movePlace(el.dataset.placeId, -1);
-      });
-      el.querySelector('[data-action="move-down"]')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        movePlace(el.dataset.placeId, 1);
-      });
     });
-  }
-
-  async function movePlace(placeId, direction) {
-    const sorted = sortedPlaces();
-    const index = sorted.findIndex((p) => p.id === placeId);
-    const neighborIndex = index + direction;
-    if (index === -1 || neighborIndex < 0 || neighborIndex >= sorted.length) return;
-    if (comparePlaces(sorted[index], sorted[neighborIndex]) !== 0) return;
-    const realIndexA = tripData.places.findIndex((p) => p.id === sorted[index].id);
-    const realIndexB = tripData.places.findIndex((p) => p.id === sorted[neighborIndex].id);
-    if (realIndexA === -1 || realIndexB === -1) return;
-    [tripData.places[realIndexA], tripData.places[realIndexB]] = [
-      tripData.places[realIndexB],
-      tripData.places[realIndexA],
-    ];
-    renderPlaceList();
-    try {
-      await saveTripData(token, tripFolderId, tripData);
-    } catch (err) {
-      showToast(t('trip.saveChangeError'), { error: true });
-    }
   }
 
   function openPlaceGallery(place) {
@@ -353,14 +306,6 @@ function renderPlaceSuggestions(el, results, onSelect) {
 
 function shortLabel(label) {
   return label.split(',').slice(0, 2).join(',').trim();
-}
-
-function chevronUpIcon() {
-  return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>`;
-}
-
-function chevronDownIcon() {
-  return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 }
 
 function escapeHtml(str) {
