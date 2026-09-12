@@ -32,7 +32,7 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
               <button class="btn btn-secondary map-toggle-btn" data-action="toggle-map">${t('trip.viewMap')}</button>
             </div>
           </div>
-          <div class="place-search">
+          <div class="place-search" data-role="place-search">
             <input type="text" placeholder="${t('trip.searchPlacePlaceholder')}" data-role="place-input" autocomplete="off" />
             <ul class="suggestion-list" data-role="place-suggestions" style="display:none"></ul>
           </div>
@@ -41,7 +41,7 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
         <div class="map-wrapper" data-role="map-wrapper">
           <button type="button" class="map-close-btn" data-action="close-map" aria-label="${t('trip.closeMap')}">✕</button>
           <div id="map"></div>
-          <div class="map-add-hint">${t('trip.mapAddHint')}</div>
+          <div class="map-add-hint" data-role="map-add-hint">${t('trip.mapAddHint')}</div>
         </div>
       </div>
     </div>
@@ -75,6 +75,16 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   if (!Array.isArray(tripData.collaborators)) tripData.collaborators = [];
 
   const isOwner = !tripData.ownerEmail || tripData.ownerEmail.toLowerCase() === (profile?.email || '').toLowerCase();
+  const myCollaboratorEntry = tripData.collaborators.find(
+    (c) => c.email.toLowerCase() === (profile?.email || '').toLowerCase()
+  );
+  // Un colaborador "viewer" puede ver todo el viaje (mapa, lugares, fotos,
+  // resumenes) pero no anadir ni cambiar nada.
+  const canEdit = isOwner || myCollaboratorEntry?.role !== 'viewer';
+  if (!canEdit) {
+    root.querySelector('[data-role="place-search"]')?.setAttribute('hidden', '');
+    root.querySelector('[data-role="map-add-hint"]')?.setAttribute('hidden', '');
+  }
 
   function renderTripTopbar() {
     renderTopbar(root.querySelector('[data-role="topbar"]'), {
@@ -109,15 +119,39 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   });
 
   root.querySelector('[data-action="gallery"]').addEventListener('click', () => {
-    openTripGallery(token, tripData);
+    openTripGallery(token, tripData, canEdit);
   });
 
   // En movil el mapa empieza oculto (la lista de lugares es lo principal);
   // este boton lo abre a pantalla completa, y el de cerrar lo vuelve a ocultar.
   const mapWrapperEl = root.querySelector('[data-role="map-wrapper"]');
+  // Recuerda el ultimo lugar en el que se hizo click en la lista, para poder
+  // centrar el mapa en el cuando se abra en movil (ahi no se pudo centrar en
+  // el momento del click porque el mapa estaba oculto, ver renderPlaceList).
+  let lastSelectedPlace = null;
+  // En movil el contenedor del mapa esta a `display:none` mientras no se
+  // abre: Leaflet no puede animar (flyTo) un mapa sin tamano y lanza
+  // "Invalid LatLng object", asi que directamente no lo intentamos si no
+  // esta visible (en vez de dejar que falle y quede una animacion
+  // fallando de fondo).
+  function isMapVisible() {
+    return mapWrapperEl.offsetParent !== null;
+  }
+  function safeFlyTo(place) {
+    if (!place || !isMapVisible()) return;
+    try {
+      flyTo(map, place.lat, place.lng, 13);
+    } catch (err) {
+      // Se ignora: es puramente cosmetico (centrar el mapa).
+    }
+  }
   root.querySelector('[data-action="toggle-map"]')?.addEventListener('click', () => {
     mapWrapperEl.classList.add('map-open');
-    setTimeout(() => map && map.invalidateSize(), 250);
+    setTimeout(() => {
+      if (!map) return;
+      map.invalidateSize();
+      safeFlyTo(lastSelectedPlace);
+    }, 250);
   });
   root.querySelector('[data-action="close-map"]')?.addEventListener('click', () => {
     mapWrapperEl.classList.remove('map-open');
@@ -185,7 +219,11 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
       el.addEventListener('click', () => {
         const place = tripData.places.find((p) => p.id === el.dataset.placeId);
         if (place) {
-          flyTo(map, place.lat, place.lng, 13);
+          lastSelectedPlace = place;
+          // En movil el mapa empieza oculto hasta que se pulsa "Ver mapa" y
+          // no se puede centrar mientras tanto (ver safeFlyTo); el toggle de
+          // "Ver mapa" se encarga de centrarlo cuando se abra.
+          safeFlyTo(place);
           openPlaceGallery(place);
         }
       });
@@ -193,28 +231,36 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   }
 
   function openPlaceGallery(place) {
-    openGallery(token, place, async (patch) => {
-      Object.assign(place, patch);
-      const marker = markers.get(place.id);
-      if (marker) updateMarkerAppearance(marker, place);
-      renderPlaceList();
-      try {
-        await saveTripData(token, tripFolderId, tripData);
-      } catch (err) {
-        showToast(t('trip.saveChangeError'), { error: true });
-      }
-      if (patch.name) {
-        // Mantiene el nombre de la carpeta de Drive sincronizado con el
-        // nombre mostrado. Si falla (p.ej. sin conexion puntual) no bloquea
-        // el resto del flujo: el nombre ya quedo guardado en trip.json.
-        renameDriveFolder(token, place.id, patch.name).catch(() => {});
-      }
-    });
+    openGallery(
+      token,
+      place,
+      async (patch) => {
+        Object.assign(place, patch);
+        const marker = markers.get(place.id);
+        if (marker) updateMarkerAppearance(marker, place);
+        renderPlaceList();
+        try {
+          await saveTripData(token, tripFolderId, tripData);
+        } catch (err) {
+          showToast(t('trip.saveChangeError'), { error: true });
+        }
+        if (patch.name) {
+          // Mantiene el nombre de la carpeta de Drive sincronizado con el
+          // nombre mostrado. Si falla (p.ej. sin conexion puntual) no bloquea
+          // el resto del flujo: el nombre ya quedo guardado en trip.json.
+          renameDriveFolder(token, place.id, patch.name).catch(() => {});
+        }
+      },
+      canEdit
+    );
   }
 
   function addMarkerForPlace(place) {
     const marker = addPlaceMarker(map, place, {
-      onClick: () => openPlaceGallery(place),
+      onClick: () => {
+        lastSelectedPlace = place;
+        openPlaceGallery(place);
+      },
     });
     markers.set(place.id, marker);
   }
@@ -256,6 +302,7 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   }
 
   map.on('click', async (e) => {
+    if (!canEdit) return;
     const { lat, lng } = e.latlng;
     let suggested = '';
     try {
