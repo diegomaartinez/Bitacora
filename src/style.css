@@ -550,6 +550,16 @@ a {
   color: var(--muted);
 }
 
+.trip-card-shared-tag {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-gold, var(--muted));
+  font-weight: 700;
+}
+
 .trip-card-confirm {
   padding: 16px 20px 20px;
   border-top: 1px solid var(--border);
@@ -818,6 +828,16 @@ a {
   background: var(--surface-muted);
 }
 
+.place-name-input[readonly] {
+  cursor: default;
+}
+
+.place-name-input[readonly]:hover,
+.place-name-input[readonly]:focus {
+  background: transparent;
+  outline: none;
+}
+
 .modal-body {
   padding: 24px 28px;
   overflow-y: auto;
@@ -873,6 +893,75 @@ a {
 
 .settings-danger .section-label {
   color: var(--accent-red-text);
+}
+
+.settings-details {
+  margin-top: 12px;
+}
+
+.settings-summary {
+  cursor: pointer;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-summary::before {
+  content: '▸';
+  font-size: 10px;
+  transition: transform 0.15s ease;
+}
+
+.settings-details[open] > .settings-summary::before {
+  transform: rotate(90deg);
+}
+
+.settings-details .collab-members-list {
+  margin-top: 12px;
+}
+
+.settings-danger.settings-details {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.settings-danger .settings-summary {
+  margin-bottom: 4px;
+}
+
+.settings-danger[open] {
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-danger[open]:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.delete-confirm-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.delete-confirm-input:focus {
+  outline: none;
+  border-color: var(--accent-red-text);
 }
 
 .settings-collab-form {
@@ -1220,6 +1309,15 @@ a {
 .color-swatch.selected {
   border-color: var(--ink);
   box-shadow: 0 0 0 2px var(--surface);
+}
+
+.color-swatch:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.color-swatch:disabled:hover {
+  transform: none;
 }
 
 .gallery-empty {

@@ -3,8 +3,6 @@ import {
   deleteTrip,
   ensureTripShareLink,
   revokeTripShareLink,
-  tripInviteLink,
-  addCollaborator,
   updateCollaboratorRole,
   removeCollaborator,
 } from './drive.js';
@@ -13,14 +11,11 @@ import { t } from './i18n.js';
 
 let overlayEl = null;
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 /**
  * Modal de ajustes de un viaje: cambiar el nombre, compartir/dejar de
- * compartir por enlace, gestionar quien tiene acceso al viaje (amigos y
- * familia invitados por email, con permiso de ver o de editar), y eliminar
- * el viaje (se mueve a la papelera de Google Drive, junto con sus lugares
- * y fotos).
+ * compartir por enlace, ver quien participa en el viaje y con que rol
+ * (anfitrion, editor o visitante), y eliminar el viaje (se mueve a la
+ * papelera de Google Drive, junto con sus lugares y fotos).
  */
 export function openTripSettings({ token, tripData, tripFolderId, profile, isOwner = true, onRenamed, onDeleted }) {
   if (overlayEl) overlayEl.remove();
@@ -36,55 +31,54 @@ export function openTripSettings({ token, tripData, tripFolderId, profile, isOwn
         <button class="btn btn-text" data-action="close">${t('tripSettings.close')}</button>
       </div>
       <div class="modal-body">
-        <section class="settings-section">
-          <label class="meta-field">
-            <span>${t('tripSettings.renameLabel')}</span>
-            <div class="settings-inline-row">
-              <input type="text" data-role="rename-input" value="${escapeAttr(tripData.name || '')}" maxlength="80" />
-              <button class="btn btn-secondary btn-small" data-action="rename-save">${t('tripSettings.renameSave')}</button>
-            </div>
-          </label>
-        </section>
+        ${
+          isOwner
+            ? `
+              <section class="settings-section">
+                <label class="meta-field">
+                  <span>${t('tripSettings.renameLabel')}</span>
+                  <div class="settings-inline-row">
+                    <input type="text" data-role="rename-input" value="${escapeAttr(tripData.name || '')}" maxlength="80" />
+                    <button class="btn btn-secondary btn-small" data-action="rename-save">${t('tripSettings.renameSave')}</button>
+                  </div>
+                </label>
+              </section>
+            `
+            : ''
+        }
 
         <section class="settings-section">
           <span class="section-label">${t('tripSettings.shareTitle')}</span>
-          <p class="section-hint">${t('tripSettings.shareHint')}</p>
-          <div class="settings-actions-row">
-            <button class="btn btn-secondary btn-small" data-action="share-generate">${t('tripSettings.shareGenerate')}</button>
-            <button class="btn btn-text btn-small" data-action="share-revoke">${t('tripSettings.shareRevoke')}</button>
-          </div>
-        </section>
-
-        <section class="settings-section">
-          <span class="section-label">${t('tripSettings.collabTitle')}</span>
-          <p class="section-hint">${t('tripSettings.collabHint')}</p>
           ${
             isOwner
               ? `
-                <div class="settings-collab-form" data-role="collab-form">
-                  <input type="email" class="prompt-input" data-role="collab-email" placeholder="${t('tripSettings.collabEmailPlaceholder')}" maxlength="120" />
-                  <select data-role="collab-role" class="collab-role-select">
-                    <option value="viewer">${t('tripSettings.collabRoleViewer')}</option>
-                    <option value="editor">${t('tripSettings.collabRoleEditor')}</option>
-                  </select>
-                  <button type="button" class="btn btn-secondary btn-small" data-action="collab-invite">${t('tripSettings.collabInvite')}</button>
-                </div>
+                <p class="section-hint">${t('tripSettings.shareHint')}</p>
                 <div class="settings-actions-row">
-                  <button type="button" class="btn btn-text btn-small" data-action="collab-copy-link">${t('tripSettings.collabCopyLink')}</button>
+                  <button class="btn btn-secondary btn-small" data-action="share-generate">${t('tripSettings.shareGenerate')}</button>
+                  <button class="btn btn-text btn-small" data-action="share-revoke">${t('tripSettings.shareRevoke')}</button>
                 </div>
               `
               : `<p class="section-hint">${t('tripSettings.collabOnlyOwner')}</p>`
           }
-          <ul class="collab-members-list" data-role="collab-members"></ul>
+          <details class="settings-details" data-role="participants-details">
+            <summary class="settings-summary">${t('tripSettings.participantsToggle')}</summary>
+            <ul class="collab-members-list" data-role="collab-members"></ul>
+          </details>
         </section>
 
-        <section class="settings-section settings-danger">
-          <span class="section-label">${t('tripSettings.dangerTitle')}</span>
-          <p class="section-hint">${t('tripSettings.dangerHint')}</p>
-          <div data-role="danger-actions">
-            <button class="btn btn-danger btn-small" data-action="delete-start">${t('tripSettings.deleteAction')}</button>
-          </div>
-        </section>
+        ${
+          isOwner
+            ? `
+              <details class="settings-section settings-danger settings-details" data-role="danger-details">
+                <summary class="section-label settings-summary">${t('tripSettings.dangerTitle')}</summary>
+                <p class="section-hint">${t('tripSettings.dangerHint')}</p>
+                <div data-role="danger-actions">
+                  <button class="btn btn-danger btn-small" data-action="delete-start">${t('tripSettings.deleteAction')}</button>
+                </div>
+              </details>
+            `
+            : ''
+        }
       </div>
     </div>
   `;
@@ -101,50 +95,52 @@ export function openTripSettings({ token, tripData, tripFolderId, profile, isOwn
     overlayEl = null;
   }
 
-  const renameInput = overlayEl.querySelector('[data-role="rename-input"]');
-  overlayEl.querySelector('[data-action="rename-save"]').addEventListener('click', async (e) => {
-    const btn = e.currentTarget;
-    const newName = renameInput.value.trim();
-    if (!newName || newName === tripData.name) return;
-    btn.disabled = true;
-    try {
-      await renameTrip(token, tripFolderId, newName);
-      tripData.name = newName;
-      onRenamed?.(newName);
-      showToast(t('tripSettings.renameSuccess'));
-    } catch (err) {
-      showToast(t('tripSettings.renameError'), { error: true });
-    } finally {
-      btn.disabled = false;
-    }
-  });
+  if (isOwner) {
+    const renameInput = overlayEl.querySelector('[data-role="rename-input"]');
+    overlayEl.querySelector('[data-action="rename-save"]').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const newName = renameInput.value.trim();
+      if (!newName || newName === tripData.name) return;
+      btn.disabled = true;
+      try {
+        await renameTrip(token, tripFolderId, newName);
+        tripData.name = newName;
+        onRenamed?.(newName);
+        showToast(t('tripSettings.renameSuccess'));
+      } catch (err) {
+        showToast(t('tripSettings.renameError'), { error: true });
+      } finally {
+        btn.disabled = false;
+      }
+    });
 
-  overlayEl.querySelector('[data-action="share-generate"]').addEventListener('click', async (e) => {
-    const btn = e.currentTarget;
-    btn.disabled = true;
-    try {
-      const url = await ensureTripShareLink(token, tripFolderId);
-      await copyToClipboard(url);
-      showToast(t('tripSettings.shareCopied'));
-    } catch (err) {
-      showToast(t('tripSettings.shareError'), { error: true });
-    } finally {
-      btn.disabled = false;
-    }
-  });
+    overlayEl.querySelector('[data-action="share-generate"]').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try {
+        const url = await ensureTripShareLink(token, tripFolderId);
+        await copyToClipboard(url);
+        showToast(t('tripSettings.shareCopied'));
+      } catch (err) {
+        showToast(t('tripSettings.shareError'), { error: true });
+      } finally {
+        btn.disabled = false;
+      }
+    });
 
-  overlayEl.querySelector('[data-action="share-revoke"]').addEventListener('click', async (e) => {
-    const btn = e.currentTarget;
-    btn.disabled = true;
-    try {
-      await revokeTripShareLink(token, tripFolderId);
-      showToast(t('tripSettings.shareRevoked'));
-    } catch (err) {
-      showToast(t('tripSettings.shareRevokeError'), { error: true });
-    } finally {
-      btn.disabled = false;
-    }
-  });
+    overlayEl.querySelector('[data-action="share-revoke"]').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try {
+        await revokeTripShareLink(token, tripFolderId);
+        showToast(t('tripSettings.shareRevoked'));
+      } catch (err) {
+        showToast(t('tripSettings.shareRevokeError'), { error: true });
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
 
   // ------------------------- Amigos y familia -------------------------
   const membersList = overlayEl.querySelector('[data-role="collab-members"]');
@@ -175,7 +171,7 @@ export function openTripSettings({ token, tripData, tripFolderId, profile, isOwn
           </li>
         `);
       } else {
-        const roleLabel = c.role === 'editor' ? t('tripSettings.collabRoleEditor') : t('tripSettings.collabRoleViewer');
+        const roleLabel = c.role === 'editor' ? t('tripSettings.collabRoleEditorTag') : t('tripSettings.collabRoleViewerTag');
         rows.push(`
           <li class="collab-member-item">
             <span class="collab-member-email">${escapeAttr(c.email)}${youTag}</span>
@@ -223,69 +219,64 @@ export function openTripSettings({ token, tripData, tripFolderId, profile, isOwn
   renderMembers();
 
   if (isOwner) {
-    const collabEmailInput = overlayEl.querySelector('[data-role="collab-email"]');
-    const collabRoleSelect = overlayEl.querySelector('[data-role="collab-role"]');
-    overlayEl.querySelector('[data-action="collab-invite"]').addEventListener('click', async (e) => {
-      const btn = e.currentTarget;
-      const email = collabEmailInput.value.trim();
-      if (!EMAIL_RE.test(email)) {
-        showToast(t('tripSettings.collabInviteInvalidEmail'), { error: true });
-        return;
-      }
-      if (email.toLowerCase() === myEmail) {
-        showToast(t('tripSettings.collabInviteInvalidEmail'), { error: true });
-        return;
-      }
-      btn.disabled = true;
-      try {
-        await addCollaborator(token, tripFolderId, tripData, email, collabRoleSelect.value);
-        collabEmailInput.value = '';
-        showToast(t('tripSettings.collabInviteSuccess'));
-        renderMembers();
-      } catch (err) {
-        showToast(t('tripSettings.collabInviteError'), { error: true });
-      } finally {
-        btn.disabled = false;
-      }
-    });
+    const dangerDetails = overlayEl.querySelector('[data-role="danger-details"]');
+    const dangerActions = overlayEl.querySelector('[data-role="danger-actions"]');
+    // Frase exacta que hay que escribir para poder eliminar el viaje: se
+    // reutiliza el propio texto del boton ("Eliminar viaje" / "Delete trip")
+    // para no duplicar la traduccion en dos sitios distintos.
+    const requiredPhrase = t('tripSettings.deleteAction');
 
-    overlayEl.querySelector('[data-action="collab-copy-link"]').addEventListener('click', async () => {
-      await copyToClipboard(tripInviteLink(tripFolderId));
-      showToast(t('tripSettings.collabLinkCopied'));
-    });
+    const showDeleteStart = () => {
+      dangerActions.innerHTML = `<button class="btn btn-danger btn-small" data-action="delete-start">${t('tripSettings.deleteAction')}</button>`;
+      dangerActions.querySelector('[data-action="delete-start"]').addEventListener('click', showDeleteConfirm);
+    };
+
+    function showDeleteConfirm() {
+      // Al abrir la confirmacion, evitamos que el <details> de la zona de
+      // peligro se pueda plegar por accidente mientras se esta escribiendo.
+      if (dangerDetails) dangerDetails.open = true;
+      dangerActions.innerHTML = `
+        <p class="section-hint">${t('tripSettings.deleteConfirm')}</p>
+        <p class="section-hint">${t('tripSettings.deleteTypePrompt', { phrase: requiredPhrase })}</p>
+        <input
+          type="text"
+          class="prompt-input delete-confirm-input"
+          data-role="delete-confirm-input"
+          placeholder="${escapeAttr(t('tripSettings.deleteTypePlaceholder'))}"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+        />
+        <div class="settings-actions-row">
+          <button class="btn btn-danger btn-small" data-action="delete-confirm" disabled>${t('tripSettings.deleteYes')}</button>
+          <button class="btn btn-text btn-small" data-action="delete-cancel">${t('tripSettings.deleteCancel')}</button>
+        </div>
+      `;
+      const confirmInput = dangerActions.querySelector('[data-role="delete-confirm-input"]');
+      const confirmBtn = dangerActions.querySelector('[data-action="delete-confirm"]');
+      confirmInput.addEventListener('input', () => {
+        confirmBtn.disabled = confirmInput.value !== requiredPhrase;
+      });
+      dangerActions.querySelector('[data-action="delete-cancel"]').addEventListener('click', showDeleteStart);
+      confirmBtn.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        if (confirmInput.value !== requiredPhrase) return;
+        btn.disabled = true;
+        confirmInput.disabled = true;
+        try {
+          await deleteTrip(token, tripFolderId);
+          close();
+          onDeleted?.();
+        } catch (err) {
+          showToast(t('tripSettings.deleteError'), { error: true });
+          btn.disabled = false;
+          confirmInput.disabled = false;
+        }
+      });
+    }
+
+    overlayEl.querySelector('[data-action="delete-start"]').addEventListener('click', showDeleteConfirm);
   }
-
-  const dangerActions = overlayEl.querySelector('[data-role="danger-actions"]');
-
-  function showDeleteStart() {
-    dangerActions.innerHTML = `<button class="btn btn-danger btn-small" data-action="delete-start">${t('tripSettings.deleteAction')}</button>`;
-    dangerActions.querySelector('[data-action="delete-start"]').addEventListener('click', showDeleteConfirm);
-  }
-
-  function showDeleteConfirm() {
-    dangerActions.innerHTML = `
-      <p class="section-hint">${t('tripSettings.deleteConfirm')}</p>
-      <div class="settings-actions-row">
-        <button class="btn btn-danger btn-small" data-action="delete-confirm">${t('tripSettings.deleteYes')}</button>
-        <button class="btn btn-text btn-small" data-action="delete-cancel">${t('tripSettings.deleteCancel')}</button>
-      </div>
-    `;
-    dangerActions.querySelector('[data-action="delete-cancel"]').addEventListener('click', showDeleteStart);
-    dangerActions.querySelector('[data-action="delete-confirm"]').addEventListener('click', async (e) => {
-      const btn = e.currentTarget;
-      btn.disabled = true;
-      try {
-        await deleteTrip(token, tripFolderId);
-        close();
-        onDeleted?.();
-      } catch (err) {
-        showToast(t('tripSettings.deleteError'), { error: true });
-        btn.disabled = false;
-      }
-    });
-  }
-
-  overlayEl.querySelector('[data-action="delete-start"]').addEventListener('click', showDeleteConfirm);
 }
 
 async function copyToClipboard(text) {
