@@ -73,6 +73,12 @@ export const STRINGS = {
     'trip.namePromptTitle': 'Nombre de este lugar',
     'trip.namePromptDescription': 'Se añadirá como un lugar nuevo en tu viaje.',
     'trip.namePromptConfirm': 'Añadir lugar',
+    'trip.requestJoin': 'Solicitar unirse',
+    'trip.requestJoinSending': 'Enviando...',
+    'trip.requestJoinPending': 'Solicitud pendiente',
+    'trip.requestJoinSuccess': 'Solicitud enviada. El anfitrión debe aceptarla.',
+    'trip.requestJoinError': 'No se pudo enviar la solicitud. Inténtalo de nuevo.',
+    'trip.requestJoinWrongPick': 'Eso no es la carpeta de este viaje. Búscala en «Compartido conmigo» y ábrela.',
 
     // --- Trip settings modal ---
     'tripSettings.title': 'Ajustes del viaje',
@@ -83,7 +89,7 @@ export const STRINGS = {
     'tripSettings.renameError': 'No se pudo cambiar el nombre.',
     'tripSettings.shareTitle': 'Compartir',
     'tripSettings.shareHint':
-      'Genera un enlace de solo lectura a las fotos de este viaje. Quien lo reciba podrá verlas, pero no editar ni añadir nada.',
+      'Quien reciba este enlace tendrá que iniciar sesión con Google para ver el viaje. Podrá verlo, pero no editar ni añadir nada, hasta que aceptes su solicitud para unirse. Asígnale el rol de editor para que también pueda hacerlo.',
     'tripSettings.shareGenerate': 'Generar y copiar enlace',
     'tripSettings.shareCopied': 'Enlace copiado al portapapeles.',
     'tripSettings.shareError': 'No se pudo generar el enlace.',
@@ -113,29 +119,16 @@ export const STRINGS = {
     'tripSettings.collabRemoveError': 'No se pudo quitar el acceso.',
     'tripSettings.collabRoleUpdated': 'Permiso actualizado.',
     'tripSettings.collabRoleUpdateError': 'No se pudo cambiar el permiso.',
+    'tripSettings.joinRequestPendingTag': 'Quiere unirse',
+    'tripSettings.joinRequestAccept': 'Aceptar',
+    'tripSettings.joinRequestDecline': 'Rechazar',
+    'tripSettings.joinRequestAcceptSuccess': '{{name}} se ha unido al viaje.',
+    'tripSettings.joinRequestAcceptError': 'No se pudo aceptar la solicitud.',
+    'tripSettings.joinRequestDeclineConfirm': '¿Rechazar la solicitud de {{name}}?',
+    'tripSettings.joinRequestDeclineSuccess': 'Solicitud rechazada.',
+    'tripSettings.joinRequestDeclineError': 'No se pudo rechazar la solicitud.',
 
     // --- Invitacion a un viaje compartido ---
-    'invite.title': '¡Te han invitado a un viaje!',
-    'invite.signInHint': 'Inicia sesión con Google para ver tu invitación.',
-    'invite.loading': 'Cargando tu invitación...',
-    'invite.notFound': 'No se pudo encontrar esta invitación. Puede que el enlace ya no sea válido.',
-    'invite.backToDashboard': 'Volver a mis viajes',
-    'invite.notForYou':
-      'Esta invitación no es para la cuenta con la que has iniciado sesión ({{email}}). Pide a quien te invitó que añada este email, o inicia sesión con la cuenta correcta.',
-    'invite.switchAccount': 'Cambiar de cuenta',
-    'invite.message': '{{host}} te invita a unirte a «{{trip}}».',
-    'invite.messageNoHost': 'Te han invitado a unirte a «{{trip}}».',
-    'invite.roleViewer': 'Podrás ver el mapa, los lugares y las fotos de este viaje.',
-    'invite.roleEditor': 'Podrás ver y editar este viaje: añadir lugares, fotos y más.',
-    'invite.accept': 'Aceptar invitación',
-    'invite.decline': 'Ahora no',
-    'invite.connectFolderTitle': 'Un último paso',
-    'invite.connectFolderHint':
-      'Para poder editar «{{trip}}», ábrelo una vez desde el selector de Google que se abrirá a continuación (búscalo en «Compartido conmigo»).',
-    'invite.connectFolderButton': 'Conectar carpeta compartida',
-    'invite.connectFolderError': 'No se pudo conectar con la carpeta. Inténtalo de nuevo.',
-    'invite.connectFolderWrongPick': 'Esa no es la carpeta de este viaje. Búscala en «Compartido conmigo» y ábrela.',
-
     // --- Toast (default / fallback) ---
     'toast.error': 'Ha ocurrido un error.',
 
@@ -239,12 +232,6 @@ export const STRINGS = {
     'summary.cover.defaultTitle': 'Mi viaje',
     'summary.cover.itineraryLabel': 'ITINERARIO',
 
-    // --- Public (read-only shared) trip view ---
-    'publicView.readOnlyTag': 'Vista de solo lectura',
-    'publicView.createOwn': 'Crea tu propio viaje',
-    'publicView.loadError': 'No se pudo cargar este viaje. El enlace puede haber caducado o dejado de compartirse.',
-    'publicView.notFound': 'No se ha encontrado este viaje.',
-    'publicView.noPlacesYet': 'Todavía no hay lugares en este viaje.',
   },
   en: {
     // --- Generic ---
@@ -311,6 +298,12 @@ export const STRINGS = {
     'trip.namePromptTitle': 'Name this place',
     'trip.namePromptDescription': 'It will be added as a new place in your trip.',
     'trip.namePromptConfirm': 'Add place',
+    'trip.requestJoin': 'Request to join',
+    'trip.requestJoinSending': 'Sending...',
+    'trip.requestJoinPending': 'Request pending',
+    'trip.requestJoinSuccess': 'Request sent. The host needs to accept it.',
+    'trip.requestJoinError': 'Could not send the request. Please try again.',
+    'trip.requestJoinWrongPick': "That isn't this trip's folder. Find it under \"Shared with me\" and open it.",
 
     // --- Trip settings modal ---
     'tripSettings.title': 'Trip settings',
@@ -321,7 +314,7 @@ export const STRINGS = {
     'tripSettings.renameError': 'Could not change the name.',
     'tripSettings.shareTitle': 'Share',
     'tripSettings.shareHint':
-      "Generate a read-only link to this trip's photos. Whoever gets it can view them, but not edit or add anything.",
+      "Whoever gets this link will need to sign in with Google to see the trip. They'll be able to view it, but not edit or add anything, until you accept their request to join. Give them the editor role so they can do that too.",
     'tripSettings.shareGenerate': 'Generate and copy link',
     'tripSettings.shareCopied': 'Link copied to clipboard.',
     'tripSettings.shareError': 'Could not generate the link.',
@@ -351,28 +344,14 @@ export const STRINGS = {
     'tripSettings.collabRemoveError': 'Could not remove access.',
     'tripSettings.collabRoleUpdated': 'Permission updated.',
     'tripSettings.collabRoleUpdateError': 'Could not change the permission.',
-
-    // --- Shared trip invitation ---
-    'invite.title': "You've been invited to a trip!",
-    'invite.signInHint': 'Sign in with Google to see your invitation.',
-    'invite.loading': 'Loading your invitation...',
-    'invite.notFound': "This invitation couldn't be found. The link may no longer be valid.",
-    'invite.backToDashboard': 'Back to my trips',
-    'invite.notForYou':
-      "This invitation isn't for the account you're signed in with ({{email}}). Ask whoever invited you to add this email, or sign in with the right account.",
-    'invite.switchAccount': 'Switch account',
-    'invite.message': '{{host}} invites you to join "{{trip}}".',
-    'invite.messageNoHost': 'You\'ve been invited to join "{{trip}}".',
-    'invite.roleViewer': "You'll be able to see this trip's map, places and photos.",
-    'invite.roleEditor': "You'll be able to view and edit this trip: add places, photos and more.",
-    'invite.accept': 'Accept invitation',
-    'invite.decline': 'Not now',
-    'invite.connectFolderTitle': 'One last step',
-    'invite.connectFolderHint':
-      'To edit "{{trip}}", open it once from the Google picker that will open next (look for it under "Shared with me").',
-    'invite.connectFolderButton': 'Connect shared folder',
-    'invite.connectFolderError': 'Could not connect to the folder. Please try again.',
-    'invite.connectFolderWrongPick': "That isn't this trip's folder. Find it under \"Shared with me\" and open it.",
+    'tripSettings.joinRequestPendingTag': 'Wants to join',
+    'tripSettings.joinRequestAccept': 'Accept',
+    'tripSettings.joinRequestDecline': 'Decline',
+    'tripSettings.joinRequestAcceptSuccess': '{{name}} has joined the trip.',
+    'tripSettings.joinRequestAcceptError': 'Could not accept the request.',
+    'tripSettings.joinRequestDeclineConfirm': "Decline {{name}}'s request?",
+    'tripSettings.joinRequestDeclineSuccess': 'Request declined.',
+    'tripSettings.joinRequestDeclineError': 'Could not decline the request.',
 
     // --- Toast (default / fallback) ---
     'toast.error': 'Something went wrong.',
@@ -477,12 +456,6 @@ export const STRINGS = {
     'summary.cover.defaultTitle': 'My trip',
     'summary.cover.itineraryLabel': 'ITINERARY',
 
-    // --- Public (read-only shared) trip view ---
-    'publicView.readOnlyTag': 'Read-only view',
-    'publicView.createOwn': 'Create your own trip',
-    'publicView.loadError': 'This trip could not be loaded. The link may have expired or is no longer shared.',
-    'publicView.notFound': 'This trip could not be found.',
-    'publicView.noPlacesYet': 'There are no places in this trip yet.',
   },
 };
 

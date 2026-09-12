@@ -1,4 +1,4 @@
-import { listTripPhotos, getPhotoBlobUrl, deletePhoto } from './drive.js';
+import { listTripPhotos, getPhotoBlobUrl, deletePhoto, listPublicTripPhotos, getPublicPhotoBlobUrl } from './drive.js';
 import { showToast } from './toast.js';
 import { t } from './i18n.js';
 
@@ -9,6 +9,14 @@ let carouselIndex = 0;
 let currentToken = null;
 let editMode = false;
 let selectedIds = new Set();
+// Un visitante sin acceso todavia (ver trip.js) no tiene permiso de Drive
+// sobre las fotos: en ese modo se usan las funciones de lectura publica
+// (misma API key que la vista publica), nunca las autenticadas.
+let publicMode = false;
+
+function fetchPhotoUrl(fileId) {
+  return publicMode ? getPublicPhotoBlobUrl(fileId) : getPhotoBlobUrl(currentToken, fileId);
+}
 
 function closeModal() {
   if (overlayEl) {
@@ -32,8 +40,14 @@ function onKeydown(e) {
   if (e.key === 'ArrowLeft') showCarouselIndex(carouselIndex - 1);
 }
 
-/** Abre la galeria de fotos de todo el viaje, con vista de cuadricula y de carrusel. */
-export async function openTripGallery(token, tripData) {
+/**
+ * Abre la galeria de fotos de todo el viaje, con vista de cuadricula y de
+ * carrusel. `canEdit=false` (colaborador "viewer", o visitante) oculta la
+ * opcion de seleccionar y borrar fotos. `isPublicMode=true` es para quien
+ * ve el viaje en modo visitante (sin acceso de Drive todavia): usa lectura
+ * publica en vez de el token de la persona.
+ */
+export async function openTripGallery(token, tripData, canEdit = true, isPublicMode = false) {
   closeModal();
   photos = [];
   viewMode = 'grid';
@@ -41,6 +55,7 @@ export async function openTripGallery(token, tripData) {
   currentToken = token;
   editMode = false;
   selectedIds = new Set();
+  publicMode = isPublicMode;
 
   overlayEl = document.createElement('div');
   overlayEl.className = 'modal-overlay gallery-overlay';
@@ -139,7 +154,7 @@ export async function openTripGallery(token, tripData) {
   });
 
   try {
-    photos = await listTripPhotos(token, tripData.places);
+    photos = publicMode ? await listPublicTripPhotos(tripData.places) : await listTripPhotos(token, tripData.places);
   } catch (err) {
     bodyEl.innerHTML = `<div class="gallery-empty">${t('tripGallery.loadError')}</div>`;
     return;
@@ -148,7 +163,7 @@ export async function openTripGallery(token, tripData) {
   if (!overlayEl) return; // se pudo cerrar mientras cargaba
 
   updateCountLabel();
-  editToggleBtn.hidden = photos.length === 0;
+  editToggleBtn.hidden = !canEdit || photos.length === 0;
 
   if (!photos.length) {
     bodyEl.innerHTML = `<div class="gallery-empty">${t('tripGallery.noPhotosHint')}</div>`;
@@ -213,7 +228,7 @@ async function loadGridImages(grid) {
   await Promise.all(
     photos.map(async (photo, i) => {
       try {
-        const url = await getPhotoBlobUrl(currentToken, photo.id);
+        const url = await fetchPhotoUrl(photo.id);
         const item = items[i];
         if (!item) return;
         item.innerHTML = `<img src="${url}" alt="${escapeHtml(photo.placeName)}" loading="lazy" />`;
@@ -263,7 +278,7 @@ function renderCarousel(bodyEl) {
     { passive: true }
   );
 
-  getPhotoBlobUrl(currentToken, photo.id)
+  fetchPhotoUrl(photo.id)
     .then((url) => {
       frame.innerHTML = `<img src="${url}" alt="${escapeHtml(photo.placeName)}" />`;
     })

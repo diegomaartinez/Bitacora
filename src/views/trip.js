@@ -1,4 +1,13 @@
-import { getTripData, saveTripData, ensurePlaceFolder, renameDriveFolder } from '../drive.js';
+import {
+  getTripData,
+  getPublicTripData,
+  saveTripData,
+  ensurePlaceFolder,
+  renameDriveFolder,
+  getPublicJoinRequests,
+  submitJoinRequest,
+} from '../drive.js';
+import { pickSharedFolder } from '../picker.js';
 import { searchPlace, reverseGeocode } from '../geocode.js';
 import { createMap, addPlaceMarker, updateMarkerAppearance, flyTo } from '../map.js';
 import { openGallery } from '../gallery.js';
@@ -27,8 +36,9 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
             <h2 data-role="trip-title">${t('trip.loading')}</h2>
             <p data-role="trip-subtitle"></p>
             <div class="sidebar-actions">
+              <button class="btn btn-cta" data-action="request-join" data-role="request-join" hidden>${t('trip.requestJoin')}</button>
               <button class="btn btn-secondary" data-action="gallery">${t('trip.viewGallery')}</button>
-              <button class="btn btn-secondary" data-action="summary">${t('trip.generateSummary')}</button>
+              <button class="btn btn-secondary" data-action="summary" data-role="summary-btn">${t('trip.generateSummary')}</button>
               <button class="btn btn-secondary map-toggle-btn" data-action="toggle-map">${t('trip.viewMap')}</button>
             </div>
           </div>
@@ -50,14 +60,27 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   let tripData = null;
   let map = null;
   const markers = new Map();
+  // Si esta cuenta no tiene ningun acceso de Drive a este viaje todavia
+  // (llego por el enlace de "Compartir" y no es ni el anfitrion ni ya
+  // colaboradora), la lectura autenticada de arriba falla -- en ese caso
+  // usamos la lectura publica (misma API que ve quien recibe el QR del
+  // billete) y la persona entra en "modo visitante": solo lectura, con un
+  // boton para pedir unirse al viaje.
+  let isVisitor = false;
 
   try {
     tripData = await getTripData(token, tripFolderId);
   } catch (err) {
-    showToast(t('trip.loadError'), { error: true });
+    try {
+      tripData = await getPublicTripData(tripFolderId);
+      isVisitor = true;
+    } catch (err2) {
+      tripData = null;
+    }
   }
 
   if (!tripData) {
+    showToast(t('trip.loadError'), { error: true });
     tripData = { name: t('trip.defaultName'), center: { lat: 28.29, lng: -16.63 }, zoom: 8, places: [] };
   }
   // Compatibilidad con viajes creados antes de tener fecha/hora/color por lugar.
@@ -67,23 +90,81 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
     if (p.time === undefined) p.time = null;
     if (!Array.isArray(p.notes)) p.notes = [];
   });
+  if (!Array.isArray(tripData.collaborators)) tripData.collaborators = [];
   // Compatibilidad con viajes creados antes de tener anfitrion/colaboradores.
   // Si el viaje no tiene anfitrion guardado, asumimos que quien lo abre
-  // ahora (normalmente su creador original) lo es.
-  if (!tripData.ownerEmail) tripData.ownerEmail = profile?.email || null;
-  if (!tripData.ownerName) tripData.ownerName = profile?.name || null;
-  if (!Array.isArray(tripData.collaborators)) tripData.collaborators = [];
+  // ahora (normalmente su creador original) lo es -- pero nunca para un
+  // visitante leido en modo publico: no tiene sentido que alguien sin
+  // ningun acceso se convierta en anfitrion solo por abrir el enlace.
+  if (!isVisitor) {
+    if (!tripData.ownerEmail) tripData.ownerEmail = profile?.email || null;
+    if (!tripData.ownerName) tripData.ownerName = profile?.name || null;
+  }
 
-  const isOwner = !tripData.ownerEmail || tripData.ownerEmail.toLowerCase() === (profile?.email || '').toLowerCase();
-  const myCollaboratorEntry = tripData.collaborators.find(
-    (c) => c.email.toLowerCase() === (profile?.email || '').toLowerCase()
-  );
+  const myEmail = (profile?.email || '').toLowerCase();
+  const isOwner = !isVisitor && (!tripData.ownerEmail || tripData.ownerEmail.toLowerCase() === myEmail);
+  const myCollaboratorEntry = tripData.collaborators.find((c) => c.email.toLowerCase() === myEmail);
   // Un colaborador "viewer" puede ver todo el viaje (mapa, lugares, fotos,
-  // resumenes) pero no anadir ni cambiar nada.
-  const canEdit = isOwner || myCollaboratorEntry?.role !== 'viewer';
+  // resumenes) pero no anadir ni cambiar nada; alguien que ni siquiera es
+  // colaborador (visitante) tampoco puede.
+  const canEdit = isOwner || (myCollaboratorEntry ? myCollaboratorEntry.role !== 'viewer' : false);
   if (!canEdit) {
     root.querySelector('[data-role="place-search"]')?.setAttribute('hidden', '');
     root.querySelector('[data-role="map-add-hint"]')?.setAttribute('hidden', '');
+  }
+  // El resumen/billete necesita permiso de escritura en Drive sobre la
+  // carpeta del viaje (para generar el enlace del QR); un visitante sin
+  // acceso todavia no lo tiene, asi que se oculta para no mostrar un QR
+  // roto.
+  if (isVisitor) {
+    root.querySelector('[data-role="summary-btn"]')?.setAttribute('hidden', '');
+  }
+
+  // Boton "Solicitar unirse": solo para quien no es ni anfitrion ni ya
+  // colaborador. Al pulsarlo, primero hace falta conectar la carpeta del
+  // viaje una vez con el selector de Google (igual que hace quien ya fue
+  // aceptado, ver picker.js) -- eso es lo que permite escribir la solicitud
+  // en el archivo de solicitudes del viaje, aunque esta cuenta no tenga
+  // ningun otro permiso sobre el resto del viaje.
+  if (isVisitor) {
+    const requestBtn = root.querySelector('[data-role="request-join"]');
+    if (requestBtn) {
+      requestBtn.hidden = false;
+      getPublicJoinRequests(tripFolderId)
+        .then((requests) => {
+          const already = requests.some((r) => r.email.toLowerCase() === myEmail);
+          if (already) {
+            requestBtn.disabled = true;
+            requestBtn.textContent = t('trip.requestJoinPending');
+          }
+        })
+        .catch(() => {});
+      requestBtn.addEventListener('click', async () => {
+        requestBtn.disabled = true;
+        requestBtn.textContent = t('trip.requestJoinSending');
+        try {
+          const pickedId = await pickSharedFolder(token);
+          if (!pickedId) {
+            requestBtn.disabled = false;
+            requestBtn.textContent = t('trip.requestJoin');
+            return;
+          }
+          if (pickedId !== tripFolderId) {
+            showToast(t('trip.requestJoinWrongPick'), { error: true });
+            requestBtn.disabled = false;
+            requestBtn.textContent = t('trip.requestJoin');
+            return;
+          }
+          await submitJoinRequest(token, tripFolderId, { email: profile?.email || '', name: profile?.name || '' });
+          requestBtn.textContent = t('trip.requestJoinPending');
+          showToast(t('trip.requestJoinSuccess'));
+        } catch (err) {
+          showToast(t('trip.requestJoinError'), { error: true });
+          requestBtn.disabled = false;
+          requestBtn.textContent = t('trip.requestJoin');
+        }
+      });
+    }
   }
 
   function renderTripTopbar() {
@@ -119,7 +200,7 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
   });
 
   root.querySelector('[data-action="gallery"]').addEventListener('click', () => {
-    openTripGallery(token, tripData, canEdit);
+    openTripGallery(token, tripData, canEdit, isVisitor);
   });
 
   // En movil el mapa empieza oculto (la lista de lugares es lo principal);
@@ -251,7 +332,8 @@ export async function renderTrip(root, { token, profile, tripFolderId, onBack })
           renameDriveFolder(token, place.id, patch.name).catch(() => {});
         }
       },
-      canEdit
+      canEdit,
+      isVisitor
     );
   }
 

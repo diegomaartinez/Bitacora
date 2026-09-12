@@ -1029,6 +1029,16 @@ a {
   font-weight: 700;
 }
 
+.collab-member-pending {
+  background: var(--accent-gold-bg, var(--surface-muted));
+  flex-wrap: wrap;
+}
+
+.collab-role-pending {
+  color: var(--accent-red-text);
+  font-weight: 700;
+}
+
 /* ------------------------------ Notas / detalles --------------------------- */
 
 .place-notes-section {

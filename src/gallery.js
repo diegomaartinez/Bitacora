@@ -1,4 +1,4 @@
-import { listPhotos, uploadPhoto, getPhotoBlobUrl, deletePhoto } from './drive.js';
+import { listPhotos, uploadPhoto, getPhotoBlobUrl, deletePhoto, listPublicPhotos, getPublicPhotoBlobUrl } from './drive.js';
 import { showToast } from './toast.js';
 import { PLACE_COLORS } from './colors.js';
 import { t } from './i18n.js';
@@ -23,8 +23,14 @@ function uid() {
  * @param {string} token - access token de Google
  * @param {object} place - {id (=carpeta Drive), name, date, color, notes}
  * @param {(patch: object) => void} onUpdate - se llama con los campos que cambian
+ * @param {boolean} canEdit - false para quien solo tiene permiso de ver
+ *   (colaborador "viewer", o visitante): puede mirar el lugar y sus fotos,
+ *   pero no cambiar nada ni subir/borrar fotos.
+ * @param {boolean} isPublicMode - true para quien ve el viaje en modo
+ *   visitante (sin acceso de Drive todavia, ver trip.js): las fotos se leen
+ *   con la API publica en vez de con el token de la persona.
  */
-export async function openGallery(token, place, onUpdate = () => {}) {
+export async function openGallery(token, place, onUpdate = () => {}, canEdit = true, isPublicMode = false) {
   closeModal();
   if (!Array.isArray(place.notes)) place.notes = [];
 
@@ -44,6 +50,7 @@ export async function openGallery(token, place, onUpdate = () => {}) {
             value="${escapeHtml(place.name)}"
             maxlength="120"
             aria-label="${t('gallery.placeName')}"
+            ${canEdit ? '' : 'readonly'}
           />
           <p>${t('gallery.savedInDrive')}</p>
         </div>
@@ -53,15 +60,15 @@ export async function openGallery(token, place, onUpdate = () => {}) {
         <div class="place-meta-row">
           <label class="meta-field">
             <span>${t('gallery.visitDate')}</span>
-            <input type="date" data-role="date-input" value="${place.date || ''}" />
+            <input type="date" data-role="date-input" value="${place.date || ''}" ${canEdit ? '' : 'disabled'} />
           </label>
           <label class="meta-field">
             <span>${t('gallery.visitTime')}</span>
-            <input type="time" data-role="time-input" value="${place.time || ''}" />
+            <input type="time" data-role="time-input" value="${place.time || ''}" ${canEdit ? '' : 'disabled'} />
           </label>
           <div class="meta-field">
             <span>${t('gallery.markerColor')}</span>
-            <div class="color-swatch-row" data-role="color-row">
+            <div class="color-swatch-row ${canEdit ? '' : 'color-swatch-row-readonly'}" data-role="color-row">
               ${PLACE_COLORS.map(
                 (c) => `
                   <button
@@ -71,6 +78,7 @@ export async function openGallery(token, place, onUpdate = () => {}) {
                     style="background:${c.hex}"
                     title="${c.label}"
                     aria-label="${c.label}"
+                    ${canEdit ? '' : 'disabled'}
                   ></button>
                 `
               ).join('')}
@@ -81,29 +89,37 @@ export async function openGallery(token, place, onUpdate = () => {}) {
         <div class="place-notes-section">
           <span class="section-label">${t('gallery.detailsTitle')}</span>
           <p class="section-hint">${t('gallery.detailsHint')}</p>
-          <div class="notes-add-row">
-            <input type="text" class="prompt-input notes-input" data-role="note-input" placeholder="${t('gallery.detailsPlaceholder')}" maxlength="80" />
-            <button type="button" class="btn btn-secondary btn-small" data-action="add-note">${t('gallery.add')}</button>
-          </div>
-          <ul class="notes-list" data-role="notes-list"></ul>
+          ${
+            canEdit
+              ? `<div class="notes-add-row">
+                  <input type="text" class="prompt-input notes-input" data-role="note-input" placeholder="${t('gallery.detailsPlaceholder')}" maxlength="80" />
+                  <button type="button" class="btn btn-secondary btn-small" data-action="add-note">${t('gallery.add')}</button>
+                </div>`
+              : ''
+          }
+          <ul class="notes-list ${canEdit ? '' : 'notes-list-readonly'}" data-role="notes-list"></ul>
         </div>
 
         <div class="photo-actions-row">
-          <button type="button" class="add-photo-btn" data-action="add-photo" title="${t('gallery.addPhotos')}" aria-label="${t('gallery.addPhotos')}">+</button>
+          ${canEdit ? `<button type="button" class="add-photo-btn" data-action="add-photo" title="${t('gallery.addPhotos')}" aria-label="${t('gallery.addPhotos')}">+</button>` : ''}
           <button type="button" class="btn btn-secondary btn-small" data-action="toggle-gallery" data-role="toggle-gallery">
             ${t('gallery.galleryLabel')}
           </button>
-          <input type="file" accept="image/*" multiple hidden data-role="file-input" />
+          ${canEdit ? '<input type="file" accept="image/*" multiple hidden data-role="file-input" />' : ''}
         </div>
 
         <div class="gallery-section" data-role="gallery-section" hidden>
           <div class="gallery-section-header">
             <span data-role="photo-count"></span>
-            <div class="gallery-edit-actions">
-              <button type="button" class="btn btn-text btn-small" data-action="edit-toggle" data-role="edit-toggle">${t('gallery.edit')}</button>
-              <button type="button" class="btn btn-text btn-small" data-action="cancel-edit" data-role="cancel-edit" hidden>${t('gallery.cancelEdit')}</button>
-              <button type="button" class="btn btn-danger btn-small" data-action="confirm-delete" data-role="confirm-delete" hidden disabled>${t('gallery.delete')}</button>
-            </div>
+            ${
+              canEdit
+                ? `<div class="gallery-edit-actions">
+                    <button type="button" class="btn btn-text btn-small" data-action="edit-toggle" data-role="edit-toggle">${t('gallery.edit')}</button>
+                    <button type="button" class="btn btn-text btn-small" data-action="cancel-edit" data-role="cancel-edit" hidden>${t('gallery.cancelEdit')}</button>
+                    <button type="button" class="btn btn-danger btn-small" data-action="confirm-delete" data-role="confirm-delete" hidden disabled>${t('gallery.delete')}</button>
+                  </div>`
+                : ''
+            }
           </div>
           <div class="photo-grid" data-role="grid"></div>
         </div>
@@ -118,41 +134,45 @@ export async function openGallery(token, place, onUpdate = () => {}) {
 
   // ------------------------------- Nombre -------------------------------
   const nameInput = overlayEl.querySelector('[data-role="name-input"]');
-  nameInput.addEventListener('change', () => {
-    const newName = nameInput.value.trim();
-    if (!newName || newName === place.name) {
-      nameInput.value = place.name;
-      return;
-    }
-    place.name = newName;
-    onUpdate({ name: place.name });
-  });
-  nameInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') nameInput.blur();
-  });
+  if (canEdit) {
+    nameInput.addEventListener('change', () => {
+      const newName = nameInput.value.trim();
+      if (!newName || newName === place.name) {
+        nameInput.value = place.name;
+        return;
+      }
+      place.name = newName;
+      onUpdate({ name: place.name });
+    });
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') nameInput.blur();
+    });
+  }
 
   // --------------------------- Fecha y color ---------------------------
-  const dateInput = overlayEl.querySelector('[data-role="date-input"]');
-  dateInput.addEventListener('change', () => {
-    place.date = dateInput.value || null;
-    onUpdate({ date: place.date });
-  });
+  if (canEdit) {
+    const dateInput = overlayEl.querySelector('[data-role="date-input"]');
+    dateInput.addEventListener('change', () => {
+      place.date = dateInput.value || null;
+      onUpdate({ date: place.date });
+    });
 
-  const timeInput = overlayEl.querySelector('[data-role="time-input"]');
-  timeInput.addEventListener('change', () => {
-    place.time = timeInput.value || null;
-    onUpdate({ time: place.time });
-  });
+    const timeInput = overlayEl.querySelector('[data-role="time-input"]');
+    timeInput.addEventListener('change', () => {
+      place.time = timeInput.value || null;
+      onUpdate({ time: place.time });
+    });
 
-  const colorRow = overlayEl.querySelector('[data-role="color-row"]');
-  colorRow.addEventListener('click', (e) => {
-    const btn = e.target.closest('.color-swatch');
-    if (!btn) return;
-    colorRow.querySelectorAll('.color-swatch').forEach((el) => el.classList.remove('selected'));
-    btn.classList.add('selected');
-    place.color = btn.dataset.color;
-    onUpdate({ color: place.color });
-  });
+    const colorRow = overlayEl.querySelector('[data-role="color-row"]');
+    colorRow.addEventListener('click', (e) => {
+      const btn = e.target.closest('.color-swatch');
+      if (!btn) return;
+      colorRow.querySelectorAll('.color-swatch').forEach((el) => el.classList.remove('selected'));
+      btn.classList.add('selected');
+      place.color = btn.dataset.color;
+      onUpdate({ color: place.color });
+    });
+  }
 
   // ------------------------------- Notas --------------------------------
   const notesList = overlayEl.querySelector('[data-role="notes-list"]');
@@ -164,7 +184,14 @@ export async function openGallery(token, place, onUpdate = () => {}) {
       return;
     }
     notesList.innerHTML = place.notes
-      .map((n) => `<li class="note-item" data-note-id="${n.id}"><span>${escapeHtml(n.text)}</span><button type="button" class="note-remove" data-note-id="${n.id}" aria-label="${t('gallery.removeNote')}">&times;</button></li>`)
+      .map(
+        (n) =>
+          `<li class="note-item" data-note-id="${n.id}"><span>${escapeHtml(n.text)}</span>${
+            canEdit
+              ? `<button type="button" class="note-remove" data-note-id="${n.id}" aria-label="${t('gallery.removeNote')}">&times;</button>`
+              : ''
+          }</li>`
+      )
       .join('');
   }
 
@@ -177,20 +204,22 @@ export async function openGallery(token, place, onUpdate = () => {}) {
     onUpdate({ notes: place.notes });
   }
 
-  overlayEl.querySelector('[data-action="add-note"]').addEventListener('click', addNote);
-  noteInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addNote();
-    }
-  });
-  notesList.addEventListener('click', (e) => {
-    const btn = e.target.closest('.note-remove');
-    if (!btn) return;
-    place.notes = place.notes.filter((n) => n.id !== btn.dataset.noteId);
-    renderNotes();
-    onUpdate({ notes: place.notes });
-  });
+  if (canEdit) {
+    overlayEl.querySelector('[data-action="add-note"]').addEventListener('click', addNote);
+    noteInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addNote();
+      }
+    });
+    notesList.addEventListener('click', (e) => {
+      const btn = e.target.closest('.note-remove');
+      if (!btn) return;
+      place.notes = place.notes.filter((n) => n.id !== btn.dataset.noteId);
+      renderNotes();
+      onUpdate({ notes: place.notes });
+    });
+  }
 
   renderNotes();
 
@@ -205,15 +234,17 @@ export async function openGallery(token, place, onUpdate = () => {}) {
   const cancelEditBtn = overlayEl.querySelector('[data-role="cancel-edit"]');
   const confirmDeleteBtn = overlayEl.querySelector('[data-role="confirm-delete"]');
 
-  addPhotoBtn.addEventListener('click', () => fileInput.click());
+  if (canEdit) {
+    addPhotoBtn.addEventListener('click', () => fileInput.click());
 
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files?.length) {
-      openGallerySection();
-      handleFiles(fileInput.files);
-    }
-    fileInput.value = '';
-  });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files?.length) {
+        openGallerySection();
+        handleFiles(fileInput.files);
+      }
+      fileInput.value = '';
+    });
+  }
 
   function openGallerySection() {
     gallerySection.hidden = false;
@@ -233,6 +264,7 @@ export async function openGallery(token, place, onUpdate = () => {}) {
   }
 
   function setEditMode(on) {
+    if (!canEdit) return;
     editMode = on;
     grid.classList.toggle('edit-mode', editMode);
     editToggleBtn.hidden = editMode;
@@ -246,6 +278,7 @@ export async function openGallery(token, place, onUpdate = () => {}) {
   }
 
   function updateConfirmDeleteLabel() {
+    if (!canEdit) return;
     confirmDeleteBtn.textContent = selectedIds.size
       ? t('gallery.deleteCount', { count: selectedIds.size })
       : t('gallery.delete');
@@ -256,10 +289,13 @@ export async function openGallery(token, place, onUpdate = () => {}) {
     setEditMode(false);
   }
 
-  editToggleBtn.addEventListener('click', () => setEditMode(true));
-  cancelEditBtn.addEventListener('click', () => setEditMode(false));
+  if (canEdit) {
+    editToggleBtn.addEventListener('click', () => setEditMode(true));
+    cancelEditBtn.addEventListener('click', () => setEditMode(false));
+  }
 
   grid.addEventListener('click', (e) => {
+    if (!canEdit) return;
     const item = e.target.closest('.photo-item');
     if (!item || !editMode) return;
     const fileId = item.dataset.fileId;
@@ -273,22 +309,24 @@ export async function openGallery(token, place, onUpdate = () => {}) {
     updateConfirmDeleteLabel();
   });
 
-  confirmDeleteBtn.addEventListener('click', async () => {
-    if (!selectedIds.size) return;
-    confirmDeleteBtn.disabled = true;
-    confirmDeleteBtn.textContent = t('gallery.deleting');
-    const ids = Array.from(selectedIds);
-    const results = await Promise.allSettled(ids.map((id) => deletePhoto(token, id)));
-    results.forEach((res, i) => {
-      if (res.status === 'fulfilled') {
-        grid.querySelector(`.photo-item[data-file-id="${ids[i]}"]`)?.remove();
-      }
+  if (canEdit) {
+    confirmDeleteBtn.addEventListener('click', async () => {
+      if (!selectedIds.size) return;
+      confirmDeleteBtn.disabled = true;
+      confirmDeleteBtn.textContent = t('gallery.deleting');
+      const ids = Array.from(selectedIds);
+      const results = await Promise.allSettled(ids.map((id) => deletePhoto(token, id)));
+      results.forEach((res, i) => {
+        if (res.status === 'fulfilled') {
+          grid.querySelector(`.photo-item[data-file-id="${ids[i]}"]`)?.remove();
+        }
+      });
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed) showToast(t('gallery.deleteError', { count: failed }), { error: true });
+      setEditMode(false);
+      updatePhotoCountLabel(grid.querySelectorAll('.photo-item').length);
     });
-    const failed = results.filter((r) => r.status === 'rejected').length;
-    if (failed) showToast(t('gallery.deleteError', { count: failed }), { error: true });
-    setEditMode(false);
-    updatePhotoCountLabel(grid.querySelectorAll('.photo-item').length);
-  });
+  }
 
   async function handleFiles(fileList) {
     const files = Array.from(fileList).filter((f) => f.type.startsWith('image/'));
@@ -313,14 +351,16 @@ export async function openGallery(token, place, onUpdate = () => {}) {
     }
   }
 
-  await renderExistingPhotos(token, place.id, grid, updatePhotoCountLabel);
+  await renderExistingPhotos(token, place.id, grid, updatePhotoCountLabel, isPublicMode);
 }
 
-async function renderExistingPhotos(token, placeFolderId, grid, updatePhotoCountLabel) {
+async function renderExistingPhotos(token, placeFolderId, grid, updatePhotoCountLabel, isPublicMode) {
   grid.innerHTML = `<div class="gallery-empty">${t('gallery.loadingPhotos')}</div>`;
   updatePhotoCountLabel(null);
+  const listFn = isPublicMode ? listPublicPhotos : (id) => listPhotos(token, id);
+  const urlFn = isPublicMode ? getPublicPhotoBlobUrl : (id) => getPhotoBlobUrl(token, id);
   try {
-    const photos = await listPhotos(token, placeFolderId);
+    const photos = await listFn(placeFolderId);
     updatePhotoCountLabel(photos.length);
     if (!photos.length) {
       grid.innerHTML = `<div class="gallery-empty">${t('gallery.noPhotosYet')}</div>`;
@@ -333,7 +373,7 @@ async function renderExistingPhotos(token, placeFolderId, grid, updatePhotoCount
       item.dataset.fileId = photo.id;
       item.innerHTML = '<div class="photo-skeleton"></div>';
       grid.appendChild(item);
-      getPhotoBlobUrl(token, photo.id)
+      urlFn(photo.id)
         .then((url) => {
           item.innerHTML = `<img src="${url}" alt="${escapeHtml(photo.name)}" />`;
         })

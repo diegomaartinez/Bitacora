@@ -52,6 +52,32 @@ export async function listPublicPhotos(placeFolderId) {
   return data.files || [];
 }
 
+/**
+ * Version publica (sin token) de listTripPhotos: todas las fotos de un
+ * viaje, de todos sus lugares, en un solo array plano. La usa quien ve un
+ * viaje en modo visitante (por enlace, antes de que el anfitrion le acepte).
+ */
+export async function listPublicTripPhotos(places) {
+  const perPlace = await Promise.all(
+    places.map(async (place) => {
+      try {
+        const photos = await listPublicPhotos(place.id);
+        return photos.map((photo) => ({
+          ...photo,
+          placeId: place.id,
+          placeName: place.name,
+          placeDate: place.date || null,
+        }));
+      } catch (err) {
+        return [];
+      }
+    })
+  );
+  return perPlace
+    .flat()
+    .sort((a, b) => (a.placeDate || '').localeCompare(b.placeDate || '') || (a.createdTime || '').localeCompare(b.createdTime || ''));
+}
+
 /** Descarga una foto publica y devuelve una object URL (con cache en memoria). */
 export async function getPublicPhotoBlobUrl(fileId) {
   if (publicBlobUrlCache.has(fileId)) return publicBlobUrlCache.get(fileId);
@@ -105,6 +131,24 @@ export async function listTrips(token, rootFolderId) {
   const q = encodeURIComponent(
     `'${rootFolderId}' in parents and mimeType='${FOLDER_MIME}' and trashed=false`
   );
+  const res = await driveFetch(
+    token,
+    `${API}/files?q=${q}&fields=files(id,name,createdTime)&orderBy=createdTime desc`
+  );
+  const data = await res.json();
+  return data.files || [];
+}
+
+/**
+ * Lista los viajes de otras personas a los que esta cuenta se ha unido
+ * como colaboradora (ver invite.js): con el permiso drive.file la app solo
+ * puede "ver" carpetas que esta cuenta ha abierto alguna vez con el
+ * selector de Google, asi que este listado ya sale filtrado a exactamente
+ * esas -- no hace falta comprobar nada mas para saber que son viajes
+ * compartidos de Bitácora.
+ */
+export async function listSharedTrips(token) {
+  const q = encodeURIComponent(`sharedWithMe=true and mimeType='${FOLDER_MIME}' and trashed=false`);
   const res = await driveFetch(
     token,
     `${API}/files?q=${q}&fields=files(id,name,createdTime)&orderBy=createdTime desc`
@@ -471,4 +515,142 @@ export async function removeCollaborator(token, tripFolderId, tripData, email) {
   await unshareFolderFromUser(token, tripFolderId, cleanEmail);
   tripData.collaborators = (tripData.collaborators || []).filter((c) => c.email.toLowerCase() !== cleanEmail);
   await saveTripData(token, tripFolderId, tripData);
+}
+
+// ---------------------------------------------------------------------------
+// Solicitudes para unirse a un viaje ("visitantes"): quien recibe el enlace
+// de "Compartir" y no es ni el anfitrion ni ya colaborador entra al viaje en
+// modo solo-lectura (ver trip.js), con un boton para pedir unirse. Como no
+// hay servidor propio, esa persona no tiene ningun permiso de escritura en
+// Drive todavia -- para poder "dejar constancia" de su solicitud sin que el
+// anfitrion tenga que darle acceso de antemano, usamos un archivo aparte
+// dentro de la carpeta del viaje (solicitudes.json) que es "cualquiera con
+// el enlace puede escribir", a diferencia de la carpeta del viaje en si
+// (que sigue siendo de solo lectura para cualquiera). Es decir: quien no ha
+// sido aceptado solo puede tocar este unico archivo, nunca las fotos ni el
+// resto de datos del viaje.
+// ---------------------------------------------------------------------------
+
+const JOIN_REQUESTS_FILENAME = 'solicitudes.json';
+
+async function findJoinRequestsFileId(token, tripFolderId) {
+  const q = encodeURIComponent(`'${tripFolderId}' in parents and name='${JOIN_REQUESTS_FILENAME}' and trashed=false`);
+  const res = await driveFetch(token, `${API}/files?q=${q}&fields=files(id)`);
+  const data = await res.json();
+  return data.files && data.files.length > 0 ? data.files[0].id : null;
+}
+
+/**
+ * Crea (si hace falta) el archivo de solicitudes de un viaje y lo deja
+ * "cualquiera con el enlace puede escribir". Lo llama el anfitrion al
+ * generar el enlace de compartir (ver tripSettings.js), nunca un visitante
+ * (que no tiene permiso para crear archivos en esta carpeta).
+ */
+export async function ensureJoinRequestsFile(token, tripFolderId) {
+  let fileId = await findJoinRequestsFileId(token, tripFolderId);
+  if (!fileId) {
+    const created = await uploadJsonFile(token, JOIN_REQUESTS_FILENAME, tripFolderId, { requests: [] });
+    fileId = created.id;
+  }
+  const permsRes = await driveFetch(token, `${API}/files/${fileId}/permissions?fields=permissions(id,type,role)`);
+  const permsData = await permsRes.json();
+  const alreadyWritable = (permsData.permissions || []).some((p) => p.type === 'anyone' && p.role === 'writer');
+  if (!alreadyWritable) {
+    await driveFetch(token, `${API}/files/${fileId}/permissions?sendNotificationEmail=false`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'anyone', role: 'writer', allowFileDiscovery: false }),
+    });
+  }
+  return fileId;
+}
+
+/**
+ * Lee las solicitudes pendientes de un viaje sin necesitar el token de
+ * nadie en concreto (lectura publica, igual que getPublicTripData) -- la
+ * usa quien ve el viaje en modo visitante para saber si ya tiene una
+ * solicitud enviada, sin tener que conectar la carpeta primero.
+ */
+export async function getPublicJoinRequests(tripFolderId) {
+  if (!isPublicReadConfigured()) return [];
+  const q = encodeURIComponent(
+    `'${tripFolderId}' in parents and name='${JOIN_REQUESTS_FILENAME}' and trashed=false`
+  );
+  const listRes = await publicDriveFetch(`${API}/files?q=${q}&fields=files(id)&key=${GOOGLE_API_KEY}`);
+  const listData = await listRes.json();
+  const fileId = listData.files && listData.files.length > 0 ? listData.files[0].id : null;
+  if (!fileId) return [];
+  try {
+    const res = await publicDriveFetch(`${API}/files/${fileId}?alt=media&key=${GOOGLE_API_KEY}`);
+    const data = await res.json();
+    return Array.isArray(data.requests) ? data.requests : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+/**
+ * Envia (o actualiza) una solicitud para unirse a un viaje. Antes de poder
+ * escribir en solicitudes.json, quien pide unirse tiene que "conectar" la
+ * carpeta del viaje una vez con el selector de Google (ver picker.js y
+ * trip.js): eso es lo que permite que la app, con su permiso limitado
+ * (drive.file), pueda tocar ese archivo en su nombre -- el archivo en si ya
+ * es "cualquiera con el enlace puede escribir" (ver ensureJoinRequestsFile),
+ * pero sin ese paso el navegador de la persona no tiene ni siquiera permiso
+ * para intentarlo.
+ */
+export async function submitJoinRequest(token, tripFolderId, { email, name }) {
+  const cleanEmail = email.trim().toLowerCase();
+  const fileId = await findJoinRequestsFileId(token, tripFolderId);
+  if (!fileId) throw new Error('Esta carpeta todavia no acepta solicitudes.');
+  const res = await driveFetch(token, `${API}/files/${fileId}?alt=media`);
+  const data = await res.json();
+  const requests = Array.isArray(data.requests) ? data.requests : [];
+  const existing = requests.find((r) => r.email.toLowerCase() === cleanEmail);
+  if (existing) {
+    existing.name = name || existing.name;
+    existing.requestedAt = new Date().toISOString();
+  } else {
+    requests.push({ email: cleanEmail, name: name || '', requestedAt: new Date().toISOString() });
+  }
+  await driveFetch(token, `${UPLOAD_API}/files/${fileId}?uploadType=media`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests }),
+  });
+}
+
+/** Lista las solicitudes pendientes de un viaje (para el anfitrion, en Ajustes). */
+export async function listJoinRequests(token, tripFolderId) {
+  const fileId = await findJoinRequestsFileId(token, tripFolderId);
+  if (!fileId) return [];
+  const res = await driveFetch(token, `${API}/files/${fileId}?alt=media`);
+  const data = await res.json();
+  return Array.isArray(data.requests) ? data.requests : [];
+}
+
+async function removeJoinRequest(token, tripFolderId, email) {
+  const fileId = await findJoinRequestsFileId(token, tripFolderId);
+  if (!fileId) return;
+  const res = await driveFetch(token, `${API}/files/${fileId}?alt=media`);
+  const data = await res.json();
+  const requests = (Array.isArray(data.requests) ? data.requests : []).filter(
+    (r) => r.email.toLowerCase() !== email.toLowerCase()
+  );
+  await driveFetch(token, `${UPLOAD_API}/files/${fileId}?uploadType=media`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests }),
+  });
+}
+
+/** El anfitrion acepta una solicitud: la persona pasa a ser colaboradora con el rol elegido. */
+export async function acceptJoinRequest(token, tripFolderId, tripData, email, role) {
+  await addCollaborator(token, tripFolderId, tripData, email, role);
+  await removeJoinRequest(token, tripFolderId, email);
+}
+
+/** El anfitrion rechaza una solicitud: simplemente desaparece de la lista. */
+export async function declineJoinRequest(token, tripFolderId, email) {
+  await removeJoinRequest(token, tripFolderId, email);
 }

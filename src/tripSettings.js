@@ -3,6 +3,10 @@ import {
   deleteTrip,
   ensureTripShareLink,
   revokeTripShareLink,
+  ensureJoinRequestsFile,
+  listJoinRequests,
+  acceptJoinRequest,
+  declineJoinRequest,
   updateCollaboratorRole,
   removeCollaborator,
 } from './drive.js';
@@ -119,6 +123,10 @@ export function openTripSettings({ token, tripData, tripFolderId, profile, isOwn
       btn.disabled = true;
       try {
         const url = await ensureTripShareLink(token, tripFolderId);
+        // El archivo de solicitudes tiene que existir ya antes de que
+        // llegue el primer visitante: quien no es ni anfitrion ni
+        // colaborador no tiene permiso para crearlo el mismo (ver drive.js).
+        await ensureJoinRequestsFile(token, tripFolderId);
         await copyToClipboard(url);
         showToast(t('tripSettings.shareCopied'));
       } catch (err) {
@@ -146,7 +154,7 @@ export function openTripSettings({ token, tripData, tripFolderId, profile, isOwn
   const membersList = overlayEl.querySelector('[data-role="collab-members"]');
   const myEmail = (profile?.email || '').toLowerCase();
 
-  function renderMembers() {
+  async function renderMembers() {
     const rows = [];
     if (tripData.ownerEmail) {
       const youTag = tripData.ownerEmail.toLowerCase() === myEmail ? ` ${t('tripSettings.collabYouTag')}` : '';
@@ -180,7 +188,71 @@ export function openTripSettings({ token, tripData, tripFolderId, profile, isOwn
         `);
       }
     });
+
+    // Solicitudes pendientes de unirse (ver publicView/trip.js -> boton
+    // "Solicitar unirse"): solo el anfitrion puede verlas y resolverlas.
+    let pendingRequests = [];
+    if (isOwner) {
+      try {
+        pendingRequests = await listJoinRequests(token, tripFolderId);
+      } catch (err) {
+        pendingRequests = [];
+      }
+    }
+    pendingRequests.forEach((r) => {
+      rows.push(`
+        <li class="collab-member-item collab-member-pending" data-email="${escapeAttr(r.email)}">
+          <span class="collab-member-email">${escapeAttr(r.name || r.email)}</span>
+          <span class="collab-role-tag collab-role-pending">${t('tripSettings.joinRequestPendingTag')}</span>
+          <select class="collab-role-select collab-role-select-small" data-role="request-role-select" data-email="${escapeAttr(r.email)}">
+            <option value="viewer">${t('tripSettings.collabRoleViewer')}</option>
+            <option value="editor">${t('tripSettings.collabRoleEditor')}</option>
+          </select>
+          <button type="button" class="btn btn-secondary btn-small" data-action="request-accept" data-email="${escapeAttr(r.email)}" data-name="${escapeAttr(r.name || r.email)}">${t('tripSettings.joinRequestAccept')}</button>
+          <button type="button" class="btn btn-text btn-small" data-action="request-decline" data-email="${escapeAttr(r.email)}" data-name="${escapeAttr(r.name || r.email)}">${t('tripSettings.joinRequestDecline')}</button>
+        </li>
+      `);
+    });
+
     membersList.innerHTML = rows.join('');
+
+    membersList.querySelectorAll('[data-action="request-accept"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const email = btn.dataset.email;
+        const name = btn.dataset.name;
+        const row = btn.closest('.collab-member-item');
+        const roleSelect = row?.querySelector('[data-role="request-role-select"]');
+        const role = roleSelect?.value || 'viewer';
+        btn.disabled = true;
+        row?.querySelectorAll('button, select').forEach((el) => (el.disabled = true));
+        try {
+          await acceptJoinRequest(token, tripFolderId, tripData, email, role);
+          showToast(t('tripSettings.joinRequestAcceptSuccess', { name }));
+          renderMembers();
+        } catch (err) {
+          showToast(t('tripSettings.joinRequestAcceptError'), { error: true });
+          row?.querySelectorAll('button, select').forEach((el) => (el.disabled = false));
+        }
+      });
+    });
+
+    membersList.querySelectorAll('[data-action="request-decline"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const email = btn.dataset.email;
+        const name = btn.dataset.name;
+        if (!window.confirm(t('tripSettings.joinRequestDeclineConfirm', { name }))) return;
+        const row = btn.closest('.collab-member-item');
+        row?.querySelectorAll('button, select').forEach((el) => (el.disabled = true));
+        try {
+          await declineJoinRequest(token, tripFolderId, email);
+          showToast(t('tripSettings.joinRequestDeclineSuccess'));
+          renderMembers();
+        } catch (err) {
+          showToast(t('tripSettings.joinRequestDeclineError'), { error: true });
+          row?.querySelectorAll('button, select').forEach((el) => (el.disabled = false));
+        }
+      });
+    });
 
     membersList.querySelectorAll('[data-role="member-role-select"]').forEach((select) => {
       select.addEventListener('change', async () => {

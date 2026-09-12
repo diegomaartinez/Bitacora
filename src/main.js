@@ -3,11 +3,18 @@ import { signOut } from './auth.js';
 import { renderLogin } from './views/login.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderTrip } from './views/trip.js';
-import { renderPublicTrip } from './publicTripView.js';
-import { renderInvite } from './invite.js';
 import { state } from './state.js';
 
 const root = document.getElementById('app');
+
+// Si se llega aqui desde un enlace de "Compartir" (?share=<id>, o el antiguo
+// ?invite=<id> por compatibilidad con enlaces ya repartidos), en vez de ir
+// al panel principal tras iniciar sesion se entra directamente a ese viaje
+// -- vease trip.js, que ya sabe mostrarlo en modo visitante (solo lectura,
+// con boton para solicitar unirse) si la cuenta no es el anfitrion ni ya
+// forma parte del viaje.
+const initialParams = new URLSearchParams(window.location.search);
+const pendingShareTripId = initialParams.get('share') || initialParams.get('invite') || null;
 
 let session = null; // { token, profile }
 let currentRender = () => showLogin();
@@ -18,7 +25,11 @@ function showLogin() {
   state.rootFolderId = null;
   renderLogin(root, (token, profile) => {
     session = { token, profile };
-    showDashboard();
+    if (pendingShareTripId) {
+      showTrip(pendingShareTripId);
+    } else {
+      showDashboard();
+    }
   });
 }
 
@@ -49,35 +60,7 @@ function handleSignOut() {
   showLogin();
 }
 
-function showPublicTrip(tripFolderId) {
-  currentRender = () => showPublicTrip(tripFolderId);
-  renderPublicTrip(root, { tripFolderId });
-}
-
-function showInvite(tripFolderId) {
-  currentRender = () => showInvite(tripFolderId);
-  renderInvite(root, {
-    tripFolderId,
-    session,
-    onSignIn: (token, profile) => {
-      session = { token, profile };
-    },
-    onEnterViewer: () => showPublicTrip(tripFolderId),
-    onEnterEditor: () => showTrip(tripFolderId),
-    onGoToDashboard: () => (session ? showDashboard() : showLogin()),
-  });
-}
-
 window.addEventListener('td:signout', handleSignOut);
 window.addEventListener('td:langchange', () => currentRender());
 
-const params = new URLSearchParams(window.location.search);
-const sharedTripId = params.get('share');
-const inviteTripId = params.get('invite');
-if (inviteTripId) {
-  showInvite(inviteTripId);
-} else if (sharedTripId) {
-  showPublicTrip(sharedTripId);
-} else {
-  showLogin();
-}
+showLogin();
