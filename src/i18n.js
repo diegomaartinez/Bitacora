@@ -25,6 +25,8 @@ export const STRINGS = {
     'login.configWarning':
       'Falta configurar las credenciales de Google. Abre <code>src/config.js</code> y pega tu Client ID de OAuth (mira README.md para los pasos completos en Google Cloud Console).',
     'login.notReadyGeneric': 'El inicio de sesión no está disponible ahora mismo. Vuelve a intentarlo más tarde.',
+    'login.privacyLink': 'Privacidad',
+    'login.termsLink': 'Términos de uso',
 
     // --- Topbar ---
     'topbar.backToTrips': 'Viajes',
@@ -250,6 +252,8 @@ export const STRINGS = {
     'login.configWarning':
       'Google credentials are not configured yet. Open <code>src/config.js</code> and paste your OAuth Client ID (see README.md for the full steps in Google Cloud Console).',
     'login.notReadyGeneric': "Sign-in isn't available right now. Please try again later.",
+    'login.privacyLink': 'Privacy',
+    'login.termsLink': 'Terms of use',
 
     // --- Topbar ---
     'topbar.backToTrips': 'Trips',

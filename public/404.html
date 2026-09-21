@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bitácora — Página no encontrada</title>
+    <style>
+      body {
+        font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
+        max-width: 480px;
+        margin: 100px auto;
+        padding: 0 24px;
+        line-height: 1.7;
+        color: #17181a;
+        text-align: center;
+      }
+      h1 {
+        font-size: 22px;
+        margin-bottom: 12px;
+      }
+      p {
+        color: #43443f;
+      }
+      a {
+        color: #e0956a;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Esta página no existe</h1>
+    <p>
+      Puede que el enlace esté incompleto o mal copiado. Te llevamos de vuelta a Bitácora
+      en un momento…
+    </p>
+    <p><a href="./" id="fallback-link">Ir a Bitácora ahora</a></p>
+    <script>
+      // GitHub Pages sirve este archivo para cualquier ruta que no exista bajo
+      // /Bitacora/. Como Bitácora es una SPA sin rutas de servidor (usa
+      // parametros en la URL, como ?share=xxx, sobre la propia raiz), no hace
+      // falta reconstruir ninguna ruta: basta con volver a la raiz del sitio
+      // conservando la query string y el hash, por si el enlace roto los traia.
+      (function () {
+        var pathParts = window.location.pathname.split('/').filter(Boolean);
+        // En una "project page" de GitHub Pages, el primer segmento de la ruta
+        // es el nombre del repositorio: lo usamos para construir la raiz sin
+        // dejar el nombre del repo fijo en el codigo.
+        var base = pathParts.length ? '/' + pathParts[0] + '/' : '/';
+        var target = base + window.location.search + window.location.hash;
+        document.getElementById('fallback-link').setAttribute('href', target);
+        window.location.replace(target);
+      })();
+    </script>
+  </body>
+</html>

@@ -2,7 +2,24 @@ import { initAuth, isConfigured, signIn } from '../auth.js';
 import { showToast } from '../toast.js';
 import { t, langSwitcherHtml, bindLangSwitcher } from '../i18n.js';
 
+// Mensajes de diagnostico para quien desarrolla la app (tu), nunca para
+// quien visita la web publicada: solo se muestran en `npm run dev` /
+// compilaciones de desarrollo. En produccion, si algo falta configurar,
+// la persona visitante ve un mensaje generico y el detalle solo queda en
+// la consola del navegador (F12), que un usuario normal no abre.
+const isDevBuild = Boolean(import.meta.env?.DEV);
+
 export function renderLogin(root, onSignedIn) {
+  const showConfigWarning = !isConfigured() && isDevBuild;
+
+  if (!isConfigured() && !isDevBuild) {
+    // No mostramos detalles tecnicos en produccion, pero lo dejamos escrito
+    // en la consola por si quien administra la instancia necesita depurarlo.
+    console.warn(
+      '[Bitácora] GOOGLE_CLIENT_ID no está configurado en src/config.js. Este aviso solo es visible en la consola del navegador, no en la interfaz.'
+    );
+  }
+
   root.innerHTML = `
     <div class="login-screen">
       <div class="login-lang-switch">${langSwitcherHtml()}</div>
@@ -15,9 +32,14 @@ export function renderLogin(root, onSignedIn) {
           ${t('login.continueGoogle')}
         </button>
         <p class="login-note">${t('login.privacyNote')}</p>
-        ${!isConfigured() ? configWarning() : ''}
+        ${showConfigWarning ? configWarning() : ''}
         <div class="error-banner" data-role="error" style="display:none"></div>
       </div>
+      <p class="login-legal-links">
+        <a href="./privacy.html">${t('login.privacyLink')}</a>
+        <span aria-hidden="true">·</span>
+        <a href="./terms.html">${t('login.termsLink')}</a>
+      </p>
     </div>
   `;
 
@@ -28,7 +50,7 @@ export function renderLogin(root, onSignedIn) {
 
   button.addEventListener('click', async () => {
     if (!isConfigured()) {
-      showToast(t('login.configureClientId'), { error: true });
+      showToast(isDevBuild ? t('login.configureClientId') : t('login.notReadyGeneric'), { error: true });
       return;
     }
     button.disabled = true;

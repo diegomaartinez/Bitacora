@@ -9,7 +9,6 @@ export function renderTopbar(container, { profile, onSignOut, onBack, onSettings
             ? `<button class="btn btn-text" data-action="back">&larr; ${t('topbar.backToTrips')}</button>`
             : '<span class="brand-mark">Bitácora</span>'
         }
-        ${title ? `<span class="brand-tag">${escapeHtml(title)}</span>` : ''}
         ${
           onSettings
             ? `<button class="icon-btn" data-action="settings" title="${t('topbar.settings')}" aria-label="${t('topbar.settings')}">${gearIcon()}</button>`

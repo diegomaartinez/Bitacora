@@ -17,6 +17,37 @@ function uid() {
 }
 
 /**
+ * Redimensiona y recomprime una foto en el propio movil/navegador antes de
+ * subirla: una foto de camara moderna pesa varios MB, y era eso -- no la
+ * conexion a Drive -- lo que hacia lenta la subida. Si el archivo ya es
+ * pequeno, o si el navegador no puede procesarlo (formato raro, etc.), se
+ * sube tal cual sin arriesgarse a perder la foto.
+ */
+async function compressImage(file, { maxDimension = 2000, quality = 0.82 } = {}) {
+  if (!file.type.startsWith('image/') || file.size < 350 * 1024) return file;
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const width = Math.round(bitmap.width * scale);
+    const height = Math.round(bitmap.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    // Si por lo que sea el resultado no pesa menos que el original, no merece
+    // la pena arriesgarse a perder calidad: subimos el archivo de partida.
+    if (!blob || blob.size >= file.size) return file;
+    const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], newName, { type: 'image/jpeg', lastModified: file.lastModified });
+  } catch (err) {
+    return file;
+  }
+}
+
+/**
  * Abre la galeria de fotos de un lugar en un modal. Tambien permite editar
  * la fecha de la visita, el color del marcador, anadir "sublugares" o
  * detalles (restaurantes, calles, monumentos...) y gestionar las fotos.
@@ -333,22 +364,44 @@ export async function openGallery(token, place, onUpdate = () => {}, canEdit = t
     if (!files.length) return;
     const emptyState = grid.querySelector('.gallery-empty');
     if (emptyState) emptyState.remove();
-    for (const file of files) {
-      const skeleton = document.createElement('div');
-      skeleton.className = 'photo-item';
-      skeleton.innerHTML = '<div class="photo-skeleton"></div>';
-      grid.prepend(skeleton);
-      try {
-        const uploaded = await uploadPhoto(token, place.id, file);
-        const url = URL.createObjectURL(file);
-        skeleton.dataset.fileId = uploaded.id;
-        skeleton.innerHTML = `<img src="${url}" alt="${escapeHtml(uploaded.name)}" />`;
-        updatePhotoCountLabel(grid.querySelectorAll('.photo-item').length);
-      } catch (err) {
-        skeleton.remove();
-        showToast(t('gallery.uploadError', { name: file.name }), { error: true });
+
+    // Antes se subia una foto, se esperaba a que terminase del todo, y solo
+    // entonces se empezaba la siguiente -- con varias fotos de un movil
+    // (varios MB cada una) eso se notaba muchisimo. Ahora se suben varias en
+    // paralelo. Los "esqueletos" se crean todos de golpe y en el orden en
+    // que se eligieron las fotos (por eso el reverse: cada prepend pone la
+    // ultima arriba, asi que hay que ir insertandolas de atras hacia
+    // adelante para que el orden final en pantalla sea el de seleccion).
+    const items = [...files]
+      .reverse()
+      .map((file) => {
+        const skeleton = document.createElement('div');
+        skeleton.className = 'photo-item';
+        skeleton.innerHTML = '<div class="photo-skeleton"></div>';
+        grid.prepend(skeleton);
+        return { file, skeleton };
+      })
+      .reverse();
+
+    const CONCURRENCY = 3;
+    let cursor = 0;
+    async function worker() {
+      while (cursor < items.length) {
+        const { file, skeleton } = items[cursor++];
+        try {
+          const toUpload = await compressImage(file);
+          const uploaded = await uploadPhoto(token, place.id, toUpload);
+          const url = URL.createObjectURL(file);
+          skeleton.dataset.fileId = uploaded.id;
+          skeleton.innerHTML = `<img src="${url}" alt="${escapeHtml(uploaded.name)}" />`;
+          updatePhotoCountLabel(grid.querySelectorAll('.photo-item').length);
+        } catch (err) {
+          skeleton.remove();
+          showToast(t('gallery.uploadError', { name: file.name }), { error: true });
+        }
       }
     }
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, items.length) }, worker));
   }
 
   await renderExistingPhotos(token, place.id, grid, updatePhotoCountLabel, isPublicMode);

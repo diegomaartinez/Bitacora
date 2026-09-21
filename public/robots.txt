@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://diegomaartinez.github.io/Bitacora/sitemap.xml
